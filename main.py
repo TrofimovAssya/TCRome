@@ -34,7 +34,7 @@ def build_parser():
     parser.add_argument('--loss', choices=['NLL', 'MSE'], default = 'MSE', help='The cost function to use')
 
     parser.add_argument('--weight-decay', default=1e-5, type=float, help='The size of the embeddings.')
-    parser.add_argument('--model', choices=['RNN'], default='RNN', help='Which model to use.')
+    parser.add_argument('--model', choices=['TCRonly', 'allseq'], default='TCRonly', help='Which model to use.')
     parser.add_argument('--cpu', action='store_true', help='If we want to run on cpu.') # TODO: should probably be cpu instead.
     parser.add_argument('--name', type=str, default=None, help="If we want to add a random str to the folder.")
     parser.add_argument('--gpu-selection', type=int, default=0, help="selectgpu")
@@ -42,8 +42,6 @@ def build_parser():
 
     # Monitoring options
     parser.add_argument('--save-error', action='store_true', help='If we want to save the error for each tissue and each gene at every epoch.')
-    parser.add_argument('--make-grid', default=True, type=bool,  help='If we want to generate fake patients on a meshgrid accross the patient embedding space')
-    parser.add_argument('--nb-gridpoints', default=50, type=int, help='Number of points on each side of the meshgrid')
     parser.add_argument('--load-folder', help='The folder where to load and restart the training.')
     parser.add_argument('--save-dir', default='./testing123/', help='The folder where everything will be saved.')
 
@@ -102,8 +100,6 @@ def main(argv=None):
 
 
             inputs_s, inputs_k, targets = mini[0], mini[1], mini[2]
-            #if i>=478:
-            #    import pdb; pdb.set_trace()
 
             inputs_s = Variable(inputs_s, requires_grad=False).float()
             inputs_k = Variable(inputs_k, requires_grad=False).float()
@@ -113,16 +109,11 @@ def main(argv=None):
                 inputs_s = inputs_s.cuda(opt.gpu_selection)
                 inputs_k = inputs_k.cuda(opt.gpu_selection)
                 targets = targets.cuda(opt.gpu_selection)
-            # Forward pass: Compute predicted y by passing x to the model
-            #inputs_k = inputs_k.view(-1,31,4)
-            #import pdb; pdb.set_trace()
             inputs_k = inputs_k.squeeze().permute(0, 2, 1)
             y_pred = my_model(inputs_k,inputs_s).float()
-            #import pdb; pdb.set_trace()
             y_pred = y_pred.permute(1,0)
 
             #targets = torch.reshape(targets,(targets.shape[0],1))
-            # Compute and print loss
 
             loss = criterion(y_pred, targets)
             if no_b % 5 == 0:
@@ -137,10 +128,9 @@ def main(argv=None):
             loss.backward()
             optimizer.step()
             kmerembs = my_model.get_embeddings(inputs_k, inputs_s)[0].squeeze()
-            #kmerembs = kmerembs_batch[:int(kmerembs_batch.shape[0]/opt.nb_patient)]
             np.save(f'{exp_dir}/kmer_embs/kmer_embs_batch_{no_b}',kmerembs.cpu().data.numpy())
 
-        #print ("Saving the model...")
+        print ("Saving the model...")
         monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
 
 
