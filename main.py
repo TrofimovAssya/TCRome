@@ -34,7 +34,7 @@ def build_parser():
     parser.add_argument('--loss', choices=['NLL', 'MSE'], default = 'MSE', help='The cost function to use')
 
     parser.add_argument('--weight-decay', default=1e-5, type=float, help='The size of the embeddings.')
-    parser.add_argument('--model', choices=['TCRonly', 'allseq'], default='TCRonly', help='Which model to use.')
+    parser.add_argument('--model', choices=['RNN','TCRonly', 'allseq'], default='TCRonly', help='Which model to use.')
     parser.add_argument('--cpu', action='store_true', help='If we want to run on cpu.') # TODO: should probably be cpu instead.
     parser.add_argument('--name', type=str, default=None, help="If we want to add a random str to the folder.")
     parser.add_argument('--gpu-selection', type=int, default=0, help="selectgpu")
@@ -69,6 +69,8 @@ def main(argv=None):
     if exp_dir is None: # we create a new folder if we don't load.
         exp_dir = monitoring.create_experiment_folder(opt)
 
+    if opt.model == 'RNN':
+        print ('This model is deprecated - please use TCRonly from now on')
     # creating the dataset
     print ("Getting the dataset...")
     dataset = datasets.get_dataset(opt,exp_dir)

@@ -8,7 +8,7 @@ from itertools import chain
 class FactorizedCNN(nn.Module):
 
     def __init__(self, layers_size=[10,2], nb_samples=1, emb_size=10, data_dir ='.'):
-        super(FactorizedRNN, self).__init__()
+        super(FactorizedCNN, self).__init__()
 
         self.emb_size = emb_size
         self.sample = nb_samples
@@ -130,7 +130,7 @@ class AllSeqCNN(nn.Module):
 
 def get_model(opt, inputs_size, model_state=None):
 
-    if opt.model == 'TCRonly':
+    if opt.model == 'TCRonly' or opt.model=='RNN':
         model_class = FactorizedCNN
         model = model_class(layers_size=opt.layers_size, nb_samples=inputs_size[0], emb_size=opt.emb_size, data_dir = opt.data_dir)
     elif opt.model=='allseq':
