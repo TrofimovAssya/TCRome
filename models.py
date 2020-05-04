@@ -73,14 +73,14 @@ class AllSeqCNN(nn.Module):
         self.emb_size = emb_size
         self.sample = nb_samples
         self.conv1 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 18,stride = 1)
-        self.conv2 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 18,stride = 1)
-        self.conv3 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 18,stride = 1)
-        self.conv4 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 18,stride = 1)
-        self.conv5 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 18,stride = 1)
+        self.conv2 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 21,stride = 1)
+        self.conv3 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 21,stride = 1)
+        self.conv4 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 21,stride = 1)
+        self.conv5 = nn.Conv1d(in_channels = 20,out_channels = 1,kernel_size = 21,stride = 1)
 
 
         layers = []
-        dim = [emb_size*5] + layers_size 
+        dim = [emb_size*5] + layers_size
 
         for size_in, size_out in zip(dim[:-1], dim[1:]):
             layer = nn.Linear(size_in, size_out)
@@ -92,32 +92,35 @@ class AllSeqCNN(nn.Module):
         self.last_layer = nn.Linear(dim[-1], 1)
 
 
-    def get_embeddings(self, x1, x2):
+    def get_embeddings(self, x1, x2, x3, x4, x5):
 
-        kmer, patient = x1, x2
-        # Kmer Embedding.
-        #_, (h, c) = self.rnn(kmer)
-        #kmer = h.squeeze() # get rid of extra dimension
-        kmer = self.conv1(kmer)
-        #kmer = self.conv2(kmer)
-        #kmer = self.conv3(kmer)
-        kemr = kmer.squeeze()
-        # Patient Embedding
-        patient = self.emb_1(patient.long())
-        return kmer, patient
+        tcr, hla1, hla2, hla3, hla4 = x1, x2, x3, x4, x5
+        tcr = self.conv1(tcr)
+        hla1 = self.conv2(hla1)
+        hla2 = self.conv3(hla2)
+        hla3 = self.conv4(hla3)
+        hla4 = self.conv5(hla4)
+        return tcr, hla1, hla2, hla3, hla4
 
-    def forward(self, x1, x2):
+    def forward(self, x1, x2, x3, x4, x5):
 
         # Get the embeddings
-        emb_1, emb_2 = self.get_embeddings(x1, x2)
+        emb_1, emb_2, emb_3, emb_4, emb_5 = self.get_embeddings(x1, x2, x3, x4, x5)
         #import pdb; pdb.set_trace()
         emb_1 = emb_1.permute(1,0,2)
         emb_1 = emb_1.squeeze()
+        emb_2 = emb_2.permute(1,0,2)
         emb_2 = emb_2.squeeze()
+        emb_3 = emb_3.permute(1,0,2)
+        emb_3 = emb_3.squeeze()
+        emb_4 = emb_4.permute(1,0,2)
+        emb_4 = emb_4.squeeze()
+        emb_5 = emb_5.permute(1,0,2)
+        emb_5 = emb_5.squeeze()
         #emb_2 = emb_2.view(-1,2)
         if not emb_1.shape == emb_2.shape:
             import pdb; pdb.set_trace()
-        mlp_input = torch.cat([emb_1, emb_2], 1)
+        mlp_input = torch.cat([emb_1, emb_2, emb_3, emb_4, emb_5], 1)
         # Forward pass.
         for layer in self.mlp_layers:
             mlp_input = layer(mlp_input)
