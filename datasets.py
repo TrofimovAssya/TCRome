@@ -90,12 +90,85 @@ class KmerDataset(Dataset):
         info = OrderedDict()
         return info
 
+class TCRHLADataset(Dataset):
+    """Kmer abundance dataset"""
+
+    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy'):
+        self.root_dir = root_dir
+        data_path = os.path.join(root_dir, data_file)
+        self.data = pd.read_csv(data_path, header=None)
+        self.data = list(self.data[0])
+        self.nb_patient = 10
+        self.nb_kmer = 10
+        print (self.nb_kmer)
+        print (self.nb_patient)
+        #indices_p = np.arange(self.data.shape[0])
+        #indices_k = np.arange(self.data.shape[1])
+        #self.X_data = np.transpose([np.tile(indices_k, len(indices_p)), np.repeat(indices_p, len(indices_k))])
+
+
+
+        #self.root_dir = root_dir
+        #self.X_data, self.Y_data = self.dataset_make(np.array(self.data),log_transform=False)
+        #self.X_sample = self.X_data[:,1]
+        #self.X_kmer = self.data.columns[self.X_data[:,0]]
+        #self.X_kmer = self.transform_kmerseq_table(self.X_kmer)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        #fname_sample = f'{self.root_dir}/{self.data[idx]}_samples.npy'
+        #fname_kmer = f'{self.root_dir}/{self.data[idx]}_clones.npy'
+        #fname_label = f'{self.root_dir}/{self.data[idx]}_targets.npy'
+        #sample = np.load(fname_sample)
+        #kmer = np.load(fname_kmer)
+        #kmer = kmer[np.tile(np.arange(kmer.shape[0]), self.nb_patient)]
+        #label = np.load(fname_label)
+        #label = np.log10(label)
+        #label = np.log10(label+1)
+        #kmer = np.load(f'{self.root_dir}/{idx}_tcr.npy')
+        #kmer = np.load(f'{self.root_dir}/{idx}_tcr_oh.npy')
+        #kmer = np.load(f'{self.root_dir}/{idx}_tcr_gd_sm.npy')
+        idx = self.data[idx]
+        kmer = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
+        h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
+        h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
+        h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
+        h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
+        h1 = np.repeat(h1,kmer.shape[0])
+        h2 = np.repeat(h2,kmer.shape[0])
+        h3 = np.repeat(h3,kmer.shape[0])
+        h4 = np.repeat(h4,kmer.shape[0])
+        label = np.load(f'{self.root_dir}/{idx}_freq_log10.npy')
+        sample = [kmer,h1,h2,h3,h4, label]
+
+        return sample
+
+    def transform_kmerseq_table(self, X_kmer):
+        X_kmer = list(X_kmer)
+        out_kmers = np.zeros((len(X_kmer), len(X_kmer[0])  , 4 ))
+
+        for kmer in X_kmer:
+            out_kmers[X_kmer.index(kmer)] = self.get_kmer_onehot(kmer)
+        return np.array(out_kmers)
+
+    def input_size(self):
+        return self.nb_patient, self.nb_kmer
+
+    def extra_info(self):
+        info = OrderedDict()
+        return info
+
+
 
 
 def get_dataset(opt, exp_dir):
 
     if opt.dataset == 'kmer':
         dataset = KmerDataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file, nb_patient = opt.nb_patient, nb_kmer = opt.nb_kmer)
+    elif opt.dataset == 'hla_tcr':
+        dataset = TCRHLADataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file)
     else:
         raise NotImplementedError()
 

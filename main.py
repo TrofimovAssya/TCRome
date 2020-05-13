@@ -24,7 +24,7 @@ def build_parser():
     ### Dataset specific options
     parser.add_argument('--data-dir', default='./data/', help='The folder contaning the dataset.')
     parser.add_argument('--data-file', default='.', help='The data file with the dataset.')
-    parser.add_argument('--dataset', choices=['kmer'], default='kmer', help='Which dataset to use.')
+    parser.add_argument('--dataset', choices=['kmer','hla_tcr'], default='kmer', help='Which dataset to use.')
     parser.add_argument('--transform', default=True,help='log10(exp+1)')
     parser.add_argument('--nb-patient', default=5,type=int, help='nb of different patients')
     parser.add_argument('--nb-kmer', default=1000,type=int, help='nb of different kmers')
@@ -90,6 +90,9 @@ def main(argv=None):
         print ("Putting the model on gpu...")
         my_model.cuda(opt.gpu_selection)
 
+    if opt.model == 'allseq':
+        valid_list = np.load('/u/trofimov/Emerson/processed_data/valid_list.npy')
+
     # The training.
     print ("Start training.")
     #monitoring and predictions
@@ -101,36 +104,81 @@ def main(argv=None):
             i+=1
 
 
-            inputs_s, inputs_k, targets = mini[0], mini[1], mini[2]
+            if opt.model == 'TCRonly':
+                inputs_s, inputs_k, targets = mini[0], mini[1], mini[2]
+                inputs_s = Variable(inputs_s, requires_grad=False).float()
+                inputs_k = Variable(inputs_k, requires_grad=False).float()
+                targets = Variable(targets, requires_grad=False).float()
+                if not opt.cpu:
+                    inputs_s = inputs_s.cuda(opt.gpu_selection)
+                    inputs_k = inputs_k.cuda(opt.gpu_selection)
+                    targets = targets.cuda(opt.gpu_selection)
+                inputs_k = inputs_k.squeeze().permute(0, 2, 1)
+                y_pred = my_model(inputs_k,inputs_s).float()
+                y_pred = y_pred.permute(1,0)
 
-            inputs_s = Variable(inputs_s, requires_grad=False).float()
-            inputs_k = Variable(inputs_k, requires_grad=False).float()
-            targets = Variable(targets, requires_grad=False).float()
 
-            if not opt.cpu:
-                inputs_s = inputs_s.cuda(opt.gpu_selection)
-                inputs_k = inputs_k.cuda(opt.gpu_selection)
-                targets = targets.cuda(opt.gpu_selection)
-            inputs_k = inputs_k.squeeze().permute(0, 2, 1)
-            y_pred = my_model(inputs_k,inputs_s).float()
-            y_pred = y_pred.permute(1,0)
-
-            #targets = torch.reshape(targets,(targets.shape[0],1))
-
-            loss = criterion(y_pred, targets)
-            if no_b % 5 == 0:
-                print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss.data.cpu().numpy().reshape(1,)[0]}")
+                loss = criterion(y_pred, targets)
+                if no_b % 5 == 0:
+                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss.data.cpu().numpy().reshape(1,)[0]}")
 
                 # Saving the emb
                 np.save(os.path.join(exp_dir, 'pixel_epoch_{}'.format(t)),my_model.emb_1.weight.cpu().data.numpy())
 
 
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                #kmerembs = my_model.get_embeddings(inputs_k, inputs_s)[0].squeeze()
+                #np.save(f'{exp_dir}/kmer_embs/kmer_embs_batch_{no_b}',kmerembs.cpu().data.numpy())
+
+
+            elif opt.model == 'allseq':
+
+                inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets = mini[0], mini[1], mini[2], mini[3], mini[4], mini[5]
+                inputs_k = Variable(inputs_k, requires_grad=False).float()
+                targets = Variable(targets, requires_grad=False).float()
+                inputs_h1 = Variable(inputs_h1, requires_grad=False).float()
+                inputs_h2 = Variable(inputs_h2, requires_grad=False).float()
+                inputs_h3 = Variable(inputs_h3, requires_grad=False).float()
+                inputs_h4 = Variable(inputs_h3, requires_grad=False).float()
+
+                if not opt.cpu:
+                    inputs_k = inputs_k.cuda(opt.gpu_selection)
+                    inputs_h1 = inputs_h1.cuda(opt.gpu_selection)
+                    inputs_h2 = inputs_h2.cuda(opt.gpu_selection)
+                    inputs_h3 = inputs_h3.cuda(opt.gpu_selection)
+                    inputs_h4 = inputs_h4.cuda(opt.gpu_selection)
+                    targets = targets.cuda(opt.gpu_selection)
+                inputs_k = inputs_k.squeeze().permute(0, 2, 1)
+                inputs_h1 = inputs_h1.squeeze().permute(0, 2, 1)
+                inputs_h2 = inputs_h2.squeeze().permute(0, 2, 1)
+                inputs_h3 = inputs_h3.squeeze().permute(0, 2, 1)
+                inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
+                y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
+                                  inputs_h4).float()
+                y_pred = y_pred.permute(1,0)
+
+                #targets = torch.reshape(targets,(targets.shape[0],1))
+
+                loss = criterion(y_pred, targets)
+                if no_b in valid_list:
+                    print (f"Validation error {t},examples{no_b}/{len(dataset)}.Loss:{loss.data.cpu().numpy().reshape(1,)[0]}")
+                elif no_b % 5 == 0:
+                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss.data.cpu().numpy().reshape(1,)[0]}")
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+
+
+
+                # Saving the emb
+
+
             # Zero gradients, perform a backward pass, and update the weights.
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            kmerembs = my_model.get_embeddings(inputs_k, inputs_s)[0].squeeze()
-            np.save(f'{exp_dir}/kmer_embs/kmer_embs_batch_{no_b}',kmerembs.cpu().data.numpy())
+            if opt.model=='TCRonly':
+                kmerembs = my_model.get_embeddings(inputs_k, inputs_s)[0].squeeze()
+                np.save(f'{exp_dir}/kmer_embs/kmer_embs_batch_{no_b}',kmerembs.cpu().data.numpy())
 
         print ("Saving the model...")
         monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
