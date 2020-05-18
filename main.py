@@ -84,8 +84,12 @@ def main(argv=None):
     if opt.loss == 'NLL':
         criterion = torch.nn.NLLLoss()
 
+    if opt.model == 'TCRonly':
+        os.mkdir(f'{exp_dir}/kmer_embs/')
+    elif opt.model == 'allseq':
+        os.mkdir(f'{exp_dir}/tcr_embs/')
+        os.mkdir(f'{exp_dir}/pep_embs/')
 
-    os.mkdir(f'{exp_dir}/kmer_embs/')
     if not opt.cpu:
         print ("Putting the model on gpu...")
         my_model.cuda(opt.gpu_selection)
@@ -136,6 +140,10 @@ def main(argv=None):
             elif opt.model == 'allseq':
 
                 inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets = mini[0], mini[1], mini[2], mini[3], mini[4], mini[5]
+                inputs_h1 = inputs_h1.repeat(inputs_k.shape[1],1,1)
+                inputs_h2 = inputs_h2.repeat(inputs_k.shape[1],1,1)
+                inputs_h3 = inputs_h3.repeat(inputs_k.shape[1],1,1)
+                inputs_h4 = inputs_h4.repeat(inputs_k.shape[1],1,1)
                 inputs_k = Variable(inputs_k, requires_grad=False).float()
                 targets = Variable(targets, requires_grad=False).float()
                 inputs_h1 = Variable(inputs_h1, requires_grad=False).float()
@@ -179,6 +187,17 @@ def main(argv=None):
             if opt.model=='TCRonly':
                 kmerembs = my_model.get_embeddings(inputs_k, inputs_s)[0].squeeze()
                 np.save(f'{exp_dir}/kmer_embs/kmer_embs_batch_{no_b}',kmerembs.cpu().data.numpy())
+            elif opt.model == 'allseq':
+                batch_number = dataset.dataset.data[no_b]
+                kmerembs = my_model.get_embeddings(inputs_k, inputs_h1,
+                                                   inputs_h2, inputs_h3,
+                                                   inputs_h4)
+                kmerembs = kmerembs[0].squeeze()
+                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{batch_number}',kmerembs.cpu().data.numpy())
+
+                kmermembs = my_model.hla_representation
+                kmerembs = kmerembs[0].squeeze()
+                np.save(f'{exp_dir}/pep_embs/pep_embs_batch_{batch_number}',kmerembs.cpu().data.numpy())
 
         print ("Saving the model...")
         monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)

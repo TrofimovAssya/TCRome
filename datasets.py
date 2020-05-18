@@ -136,10 +136,10 @@ class TCRHLADataset(Dataset):
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
         h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
         h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
-        h1 = np.repeat(h1,kmer.shape[0])
-        h2 = np.repeat(h2,kmer.shape[0])
-        h3 = np.repeat(h3,kmer.shape[0])
-        h4 = np.repeat(h4,kmer.shape[0])
+        #h1 = np.repeat(h1,kmer.shape[0])
+        #h2 = np.repeat(h2,kmer.shape[0])
+        #h3 = np.repeat(h3,kmer.shape[0])
+        #h4 = np.repeat(h4,kmer.shape[0])
         label = np.load(f'{self.root_dir}/{idx}_freq_log10.npy')
         sample = [kmer,h1,h2,h3,h4, label]
 
