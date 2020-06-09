@@ -8,8 +8,8 @@ import shutil
 import pandas as pd
 
 
-class KmerDataset(Dataset):
-    """Kmer abundance dataset"""
+class TCRDataset(Dataset):
+    """TCR abundance dataset"""
 
     def __init__(self,root_dir='.',save_dir='.', data_file='data.npy', nb_patient = 5, nb_kmer = 1000):
         self.root_dir = root_dir
@@ -141,6 +141,8 @@ class TCRHLADataset(Dataset):
         #h3 = np.repeat(h3,kmer.shape[0])
         #h4 = np.repeat(h4,kmer.shape[0])
         label = np.load(f'{self.root_dir}/{idx}_freq_log10.npy')
+        label = (10**label-np.mean(10**label))/(np.std(10**label))
+        label = (label-np.min(label))/(np.max(label)-np.min(label))
         sample = [kmer,h1,h2,h3,h4, label]
 
         return sample
@@ -161,14 +163,59 @@ class TCRHLADataset(Dataset):
         return info
 
 
+class BinaryTCRDataset(Dataset):
+    """Binary TCR presence dataset"""
+
+    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy', nb_tcr_to_sample = 10000):
+        self.root_dir = root_dir
+        data_path = os.path.join(root_dir, data_file)
+        self.data = np.load(data_path)
+        self.nb_patient = 10
+        self.nb_kmer = 10
+        self.nb_tcr_to_sample = nb_tcr_to_sample
+        print (self.nb_kmer)
+        print (self.nb_patient)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        idx = self.data[idx]
+        idx, idx_n = idx[0], idx[1]
+        tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
+        tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
+        h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
+        h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
+        h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
+        h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
+        keep = np.random.permutation(np.arange(tcr.shape[0]))[:self.nb_tcr_to_sample]
+        tcr = tcr[keep]
+        tcr_n = tcr_n[keep]
+        tcr_total = np.vstack((tcr,tcr_n))
+        sample = [tcr,h1,h2,h3,h4]
+
+        return sample
+
+    def input_size(self):
+        return self.nb_patient, self.nb_kmer
+
+    def extra_info(self):
+        info = OrderedDict()
+        return info
+
+
 
 
 def get_dataset(opt, exp_dir):
 
-    if opt.dataset == 'kmer':
-        dataset = KmerDataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file, nb_patient = opt.nb_patient, nb_kmer = opt.nb_kmer)
+    if opt.dataset == 'tcr':
+        dataset = TCRDataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file, nb_patient = opt.nb_patient, nb_kmer = opt.nb_kmer)
     elif opt.dataset == 'hla_tcr':
         dataset = TCRHLADataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file)
+    elif opt.dataset == 'binary_hla_tcr':
+        dataset = BinaryTCRDataset(root_dir=opt.data_dir,
+                                   save_dir =exp_dir,data_file = opt.data_file,
+                                   nb_tcr_to_sample = opt.nb_tcr_to_sample)
     else:
         raise NotImplementedError()
 
