@@ -170,9 +170,10 @@ class BinaryTCRDataset(Dataset):
         self.root_dir = root_dir
         data_path = os.path.join(root_dir, data_file)
         self.data = np.load(data_path)
+        #self.data = self.data[:10,:]
         self.nb_patient = 10
         self.nb_kmer = 10
-        self.nb_tcr_to_sample = nb_tcr_to_sample
+        self.nb_tcr_to_sample = int(nb_tcr_to_sample)
         print (self.nb_kmer)
         print (self.nb_patient)
 
@@ -188,11 +189,10 @@ class BinaryTCRDataset(Dataset):
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
         h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
         h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
-        keep = np.random.permutation(np.arange(tcr.shape[0]))[:self.nb_tcr_to_sample]
-        tcr = tcr[keep]
-        tcr_n = tcr_n[keep]
+        tcr = tcr[:self.nb_tcr_to_sample]
+        tcr_n = tcr_n[:self.nb_tcr_to_sample]
         tcr_total = np.vstack((tcr,tcr_n))
-        sample = [tcr,h1,h2,h3,h4]
+        sample = [tcr_total,h1,h2,h3,h4]
 
         return sample
 

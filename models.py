@@ -156,7 +156,8 @@ class AllSeqCNNbin(nn.Module):
         self.mlp_layers = nn.ModuleList(layers)
 
         # Last layer
-        self.last_layer = nn.Linear(dim[-1], 1)
+        self.last_layer = nn.Linear(dim[-1], 2)
+        self.softmax = nn.Softmax(dim=1)
 
 
     def get_embeddings(self, x1, x2, x3, x4, x5):
@@ -201,6 +202,7 @@ class AllSeqCNNbin(nn.Module):
             mlp_input = layer(mlp_input)
             mlp_input = F.tanh(mlp_input)
         mlp_output = self.last_layer(mlp_input)
+        mlp_output = self.softmax(mlp_output)
 
         return mlp_output
 
@@ -215,7 +217,7 @@ def get_model(opt, inputs_size, model_state=None):
     elif opt.model=='allseq':
         model_class = AllSeqCNN
         model = model_class(layers_size = opt.layers_size, nb_samples = inputs_size[0], emb_size=opt.emb_size, data_dir = opt.data_dir)
-    elif opt.model=='allseq_binary':
+    elif opt.model=='allseq_bin':
         model_class = AllSeqCNNbin
         model = model_class(layers_size = opt.layers_size, nb_samples = inputs_size[0], emb_size=opt.emb_size, data_dir = opt.data_dir)
     else:
