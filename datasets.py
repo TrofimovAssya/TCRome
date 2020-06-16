@@ -166,11 +166,13 @@ class TCRHLADataset(Dataset):
 class BinaryTCRDataset(Dataset):
     """Binary TCR presence dataset"""
 
-    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy', nb_tcr_to_sample = 10000):
+    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy',
+                 nb_tcr_to_sample = 10000, cache='123abc'):
         self.root_dir = root_dir
+        self.cache = cache
         data_path = os.path.join(root_dir, data_file)
         self.data = np.load(data_path)
-        #self.data = self.data[:10,:]
+        #self.data = self.data[:5,:]
         self.nb_patient = 10
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
@@ -183,14 +185,25 @@ class BinaryTCRDataset(Dataset):
     def __getitem__(self, idx):
         idx = self.data[idx]
         idx, idx_n = idx[0], idx[1]
-        tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
-        tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
+        fnames = os.listdir('.')
+        if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
+            tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
+            tcr = tcr[:self.nb_tcr_to_sample]
+            np.save(f'{self.cache}_{idx}_tcr_gd.npy',tcr)
+        else:
+            tcr = np.load(f'{self.cache}_{idx}_tcr_gd.npy')
+
+        if not f'{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
+            tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
+            tcr_n = tcr_n[:self.nb_tcr_to_sample]
+            np.save(f'{self.cache}_{idx_n}_tcr_gd.npy',tcr_n)
+        else:
+            tcr_n = np.load(f'{self.cache}_{idx_n}_tcr_gd.npy')
+        #tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
         h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
         h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
-        tcr = tcr[:self.nb_tcr_to_sample]
-        tcr_n = tcr_n[:self.nb_tcr_to_sample]
         tcr_total = np.vstack((tcr,tcr_n))
         sample = [tcr_total,h1,h2,h3,h4]
 
@@ -215,7 +228,8 @@ def get_dataset(opt, exp_dir):
     elif opt.dataset == 'binary_hla_tcr':
         dataset = BinaryTCRDataset(root_dir=opt.data_dir,
                                    save_dir =exp_dir,data_file = opt.data_file,
-                                   nb_tcr_to_sample = opt.nb_tcr_to_sample)
+                                   nb_tcr_to_sample = opt.nb_tcr_to_sample,
+                                   cache = opt.cache)
     else:
         raise NotImplementedError()
 

@@ -9,6 +9,7 @@ import datasets
 import models
 import pickle
 import time
+import random
 import monitoring
 #
 def build_parser():
@@ -29,6 +30,7 @@ def build_parser():
     parser.add_argument('--transform', default=True,help='log10(exp+1)')
     parser.add_argument('--nb-patient', default=5,type=int, help='nb of different patients')
     parser.add_argument('--nb-kmer', default=1000,type=int, help='nb of different kmers')
+    parser.add_argument('--cache', default=0,type=int, help='nb of different kmers')
     parser.add_argument('--nb-tcr-to-sample', default=10000,type=int, help='nb of TCR to sample')
     # Model specific options
     parser.add_argument('--layers-size', default=[250, 75, 50, 25, 10], type=int, nargs='+', help='Number of layers to use.')
@@ -67,6 +69,8 @@ def main(argv=None):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.manual_seed(seed)
+    if opt.cache==0:
+        opt.cache = random.getrandbits(128)
 
     exp_dir = opt.load_folder
     if exp_dir is None: # we create a new folder if we don't load.
