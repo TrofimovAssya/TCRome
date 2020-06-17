@@ -186,19 +186,19 @@ class BinaryTCRDataset(Dataset):
         idx = self.data[idx]
         idx, idx_n = idx[0], idx[1]
         fnames = os.listdir('.')
-        if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
+        if not f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy' in fnames:
             tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
             tcr = tcr[:self.nb_tcr_to_sample]
-            np.save(f'{self.cache}_{idx}_tcr_gd.npy',tcr)
+            np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
         else:
-            tcr = np.load(f'{self.cache}_{idx}_tcr_gd.npy')
+            tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
 
-        if not f'{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
+        if not f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
             tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
             tcr_n = tcr_n[:self.nb_tcr_to_sample]
-            np.save(f'{self.cache}_{idx_n}_tcr_gd.npy',tcr_n)
+            np.save(f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy',tcr_n)
         else:
-            tcr_n = np.load(f'{self.cache}_{idx_n}_tcr_gd.npy')
+            tcr_n = np.load(f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy')
         #tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')

@@ -85,6 +85,9 @@ def main(argv=None):
         print ('This model is deprecated - please use TCRonly from now on')
     # creating the dataset
     print ("Getting the dataset...")
+    if not 'cached_dataset' in os.listdir('.'):
+        os.mkdir('cached_dataset')
+
     dataset = datasets.get_dataset(opt,exp_dir)
 
     # Creating a model
