@@ -30,11 +30,15 @@ def build_parser():
                                               'binary_hla_tcr'], default='tcr', help='Which dataset to use.')
     parser.add_argument('--transform', default=True,help='log10(exp+1)')
     parser.add_argument('--nb-patient', default=5,type=int, help='nb of different patients')
+    parser.add_argument('--tcr-size', default=27,type=int, help='length of the TCR sequence')
+    parser.add_argument('--hla-size', default=34,type=int, help='length of the HLA sequence')
     parser.add_argument('--nb-kmer', default=1000,type=int, help='nb of different kmers')
     parser.add_argument('--cache', default=0,type=int, help='nb of different kmers')
     parser.add_argument('--nb-tcr-to-sample', default=10000,type=int, help='nb of TCR to sample')
     # Model specific options
-    parser.add_argument('--layers-size', default=[250, 75, 50, 25, 10], type=int, nargs='+', help='Number of layers to use.')
+    parser.add_argument('--tcr-conv-layers-sizes', default=[20,1,18], type=int, nargs='+', help='TCR-Conv net config.')
+    parser.add_argument('--hla-conv-layers-sizes', default=[20,1,25], type=int, nargs='+', help='HLA-Conv net config.')
+    parser.add_argument('--mlp-layers-size', default=[250, 75, 50, 25, 10], type=int, nargs='+', help='Number of layers to use.')
     parser.add_argument('--emb_size', default=2, type=int, help='The size of the embeddings.')
     parser.add_argument('--loss', choices=['NLL', 'MSE'], default = 'MSE', help='The cost function to use')
 
