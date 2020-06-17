@@ -83,7 +83,6 @@ class AllSeqCNN(nn.Module):
 
         self.emb_size = emb_size
         self.sample = nb_samples
-        
         self.emb_size = emb_size
         self.sample = nb_samples #TODO to remove!
         self.tcr_input_size = tcr_input_size
@@ -99,7 +98,9 @@ class AllSeqCNN(nn.Module):
             dim1 = [(tcr_conv_layers_sizes[i+1]*(outsize))]
 
         self.tcr_conv_stack = nn.ModuleList(layers)
-        assert dim1==emb_size
+        dim1 = dim1[0]
+        if not dim1==emb_size:
+            import pdb;pdb.set_trace()
 
         layers = []
         outsize = self.hla_input_size
@@ -111,7 +112,9 @@ class AllSeqCNN(nn.Module):
             dim2 = [(hla_conv_layers_sizes[i+1]*(outsize))]
 
         self.hla_conv_stack = nn.ModuleList(layers)
-        assert dim2==emb_size
+        dim2 = dim2[0]
+        if not dim2==emb_size:
+            import pdb; pdb.set_trace()
         self.hla_mlp = nn.Linear(4*dim2, emb_size)
 
         layers = []
@@ -205,7 +208,9 @@ class AllSeqCNNbin(nn.Module):
             dim1 = [(tcr_conv_layers_sizes[i+1]*(outsize))]
 
         self.tcr_conv_stack = nn.ModuleList(layers)
-        assert dim1==emb_size
+        dim1 = dim1[0]
+        if not dim1==emb_size:
+            import pdb; pdb.set_trace()
 
         layers = []
         outsize = self.hla_input_size
@@ -217,7 +222,9 @@ class AllSeqCNNbin(nn.Module):
             dim2 = [(hla_conv_layers_sizes[i+1]*(outsize))]
 
         self.hla_conv_stack = nn.ModuleList(layers)
-        assert dim2==emb_size
+        dim2 = dim2[0]
+        if not dim2==emb_size:
+            import pdb;pdb.set_trace()
         self.hla_mlp = nn.Linear(4*dim2, emb_size)
 
         layers = []

@@ -3,6 +3,8 @@ import numpy as np
 import random
 import models
 import datetime
+import torch
+from torch.autograd import Variable
 import pandas as pd
 
 
@@ -18,7 +20,7 @@ def TCRonly_batch(mini, opt, my_model):
         inputs_k = inputs_k.squeeze().permute(0, 2, 1)
         y_pred = my_model(inputs_k,inputs_s).float()
         y_pred = y_pred.permute(1,0)
-    return y_pred, my_model
+    return y_pred, my_model, targets
 
 
 
@@ -50,7 +52,7 @@ def allseq_batch(mini, opt, my_model):
     y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
                       inputs_h4).float()
     y_pred = y_pred.permute(1,0)
-    return y_pred, my_model
+    return y_pred, my_model, targets
 
 
 
@@ -92,7 +94,7 @@ def binallseq_batch(mini,opt,my_model):
     inputs_h3 = inputs_h3.squeeze().permute(0, 2, 1)
     inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
     y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3, inputs_h4).float() #
-    return y_pred, my_model
+    return y_pred, my_model, targets
 
 
 

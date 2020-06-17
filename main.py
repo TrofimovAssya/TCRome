@@ -140,7 +140,7 @@ def main(argv=None):
                 #inputs_k = inputs_k.squeeze().permute(0, 2, 1)
                 #y_pred = my_model(inputs_k,inputs_s).float()
                 #y_pred = y_pred.permute(1,0)
-                y_pred, my_model = training.TCRonly_batch(mini,opt,my_model)
+                y_pred, my_model, targets = training.TCRonly_batch(mini,opt,my_model)
                 loss = criterion(y_pred, targets)
                 if no_b % 5 == 0:
                     print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss.data.cpu().numpy().reshape(1,)[0]}")
@@ -183,7 +183,7 @@ def main(argv=None):
                 #y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
                 #                  inputs_h4).float()
                 #y_pred = y_pred.permute(1,0)
-                y_pred = training.allseq_batch(mini,opt,my_model)
+                y_pred, my_model, targets = training.allseq_batch(mini,opt,my_model)
                 if no_b == 10:
                     print ('******')
                     print ((y_pred.data.cpu().numpy()))
@@ -242,7 +242,7 @@ def main(argv=None):
                 #inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
                 #y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
                 #                  inputs_h4).float()
-                y_pred = training.binallseq_batch(mini,opt,my_model)
+                y_pred, my_model, targets = training.binallseq_batch(mini,opt,my_model)
                 #y_pred = y_pred.permute(1,0)
                 #targets = torch.reshape(targets,(targets.shape[0],1))
 
