@@ -102,12 +102,9 @@ def main(argv=None):
 
     if opt.model == 'TCRonly':
         os.mkdir(f'{exp_dir}/kmer_embs/')
-    elif opt.model == 'allseq':
+    elif opt.model == 'allseq' or opt.model == 'allseq_bin':
         os.mkdir(f'{exp_dir}/tcr_embs/')
-        os.mkdir(f'{exp_dir}/pep_embs/')
-    elif opt.model == 'allseq_bin':
-        os.mkdir(f'{exp_dir}/tcr_embs/')
-        os.mkdir(f'{exp_dir}/pep_embs/')
+        os.mkdir(f'{exp_dir}/hla_embs/')
 
 
     if not opt.cpu:
@@ -176,12 +173,21 @@ def main(argv=None):
                 kmerembs = my_model.get_embeddings(inputs_k, inputs_h1,
                                                    inputs_h2, inputs_h3,
                                                    inputs_h4)
-                kmerembs = kmerembs[0].squeeze()
-                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{batch_number}',kmerembs.cpu().data.numpy())
+                kmerembs1 = kmerembs[0].squeeze()
+                bn = batch_number[0]
+                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
 
-                kmermembs = my_model.hla_representation
-                kmerembs = kmerembs[0].squeeze()
-                np.save(f'{exp_dir}/pep_embs/pep_embs_batch_{batch_number}',kmerembs.cpu().data.numpy())
+                for i in range(4):
+                    kmerembs1 = kmerembs[i+1].squeeze()
+                    kmerembs1 = kmerembs1[0]
+                    np.save(f'{exp_dir}/hla_embs/hla_embs_batch_{bn}_h{i+1}',kmerembs1.cpu().data.numpy())
+
+
+                kmerembs1 = my_model.hla_representation
+                kmerembs1 = kmerembs1[0].squeeze()
+                np.save(f'{exp_dir}/hla_embs/ppl_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
+
+
 
 
             elif opt.model == 'allseq_bin':
@@ -208,13 +214,19 @@ def main(argv=None):
                 kmerembs = my_model.get_embeddings(inputs_k, inputs_h1,
                                                    inputs_h2, inputs_h3,
                                                    inputs_h4)
-                kmerembs = kmerembs[0].squeeze()
+                kmerembs1 = kmerembs[0].squeeze()
                 bn = batch_number[0]
-                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs.cpu().data.numpy())
+                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
 
-                kmermembs = my_model.hla_representation
-                kmerembs = kmerembs[0].squeeze()
-                np.save(f'{exp_dir}/pep_embs/pep_embs_batch_{bn}',kmerembs.cpu().data.numpy())
+                for i in range(4):
+                    kmerembs1 = kmerembs[i+1].squeeze()
+                    kmerembs1 = kmerembs1[0]
+                    np.save(f'{exp_dir}/hla_embs/hla_embs_batch_{bn}_h{i+1}',kmerembs1.cpu().data.numpy())
+
+
+                kmerembs1 = my_model.hla_representation
+                kmerembs1 = kmerembs1[0].squeeze()
+                np.save(f'{exp_dir}/hla_embs/ppl_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
 
 
         print ("Saving the model...")
