@@ -7,14 +7,23 @@ import models
 import datetime
 import pandas as pd
 
+def save_loss(loss_dict,exp_dir):
+    np.save(f'{exp_dir}/training_loss.npy',loss_dict['training_loss'])
+    if 'valid_loss' in loss_dict:
+        np.save(f'{exp_dir}/validation_loss.npy',loss_dict['valid_loss'])
 
-class TranscriptomeGenerator(object):
-    """creating a genome with genes and reads and kmers"""
-    def __init__(self, arg):
-        super(ClassName, self).__init__()
-        self.arg = arg
-        
 
+def update_loss_dict(loss_dict, start = False):
+    if start:
+        loss_dict['train_losses_epoch'] = []
+        if 'valid_loss' in loss_dict:
+            loss_dict['valid_losses_epoch'] = []
+
+    else start:
+        loss_dict['train_loss'].append(np.mean(loss_dict['train_losses_epoch']))
+        if 'valid_loss' in loss_dict:
+            loss_dict['valid_loss'].append(np.mean(loss_dict['valid_losses_epoch']))
+    return loss_dict
 
 def create_experiment_folder(opt):
 
