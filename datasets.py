@@ -172,7 +172,7 @@ class BinaryTCRDataset(Dataset):
         self.cache = cache
         data_path = os.path.join(root_dir, data_file)
         self.data = np.load(data_path)
-        #self.data = self.data[:5,:]
+        self.data = self.data[:10,:]
         self.nb_patient = 10
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
@@ -185,15 +185,15 @@ class BinaryTCRDataset(Dataset):
     def __getitem__(self, idx):
         idx = self.data[idx]
         idx, idx_n = idx[0], idx[1]
-        fnames = os.listdir('.')
-        if not f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy' in fnames:
+        fnames = os.listdir('cached_dataset')
+        if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
             tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
             tcr = tcr[:self.nb_tcr_to_sample]
             np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
         else:
             tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
 
-        if not f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
+        if not f'{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
             tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
             tcr_n = tcr_n[:self.nb_tcr_to_sample]
             np.save(f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy',tcr_n)

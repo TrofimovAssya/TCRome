@@ -8,7 +8,7 @@ from torch.autograd import Variable
 import pandas as pd
 
 
-def TCRonly_batch(mini, opt, my_model):
+def TCRonly_batch(mini, opt):
     inputs_s, inputs_k, targets = mini[0], mini[1], mini[2]
     inputs_s = Variable(inputs_s, requires_grad=False).float()
     inputs_k = Variable(inputs_k, requires_grad=False).float()
@@ -18,13 +18,11 @@ def TCRonly_batch(mini, opt, my_model):
         inputs_k = inputs_k.cuda(opt.gpu_selection)
         targets = targets.cuda(opt.gpu_selection)
         inputs_k = inputs_k.squeeze().permute(0, 2, 1)
-        y_pred = my_model(inputs_k,inputs_s).float()
-        y_pred = y_pred.permute(1,0)
-    return y_pred, my_model, targets
+    return inputs_k, inputs_s, targets
 
 
 
-def allseq_batch(mini, opt, my_model):
+def allseq_batch(mini, opt):
     inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets = mini[0], mini[1], mini[2], mini[3], mini[4], mini[5]
     inputs_h1 = inputs_h1.repeat(inputs_k.shape[1],1,1)
     inputs_h2 = inputs_h2.repeat(inputs_k.shape[1],1,1)
@@ -49,14 +47,11 @@ def allseq_batch(mini, opt, my_model):
     inputs_h2 = inputs_h2.squeeze().permute(0, 2, 1)
     inputs_h3 = inputs_h3.squeeze().permute(0, 2, 1)
     inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
-    y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
-                      inputs_h4).float()
-    y_pred = y_pred.permute(1,0)
-    return y_pred, my_model, targets
+    return inputs_k,inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets
 
 
 
-def binallseq_batch(mini,opt,my_model):
+def binallseq_batch(mini,opt):
     inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4 = mini[0], mini[1], mini[2], mini[3], mini[4]
 
     if inputs_h1.shape[1]>inputs_k.shape[1]:
@@ -93,8 +88,7 @@ def binallseq_batch(mini,opt,my_model):
     inputs_h2 = inputs_h2.squeeze().permute(0, 2, 1)
     inputs_h3 = inputs_h3.squeeze().permute(0, 2, 1)
     inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
-    y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3, inputs_h4).float() #
-    return y_pred, my_model, targets
+    return inputs_k,inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets
 
 
 

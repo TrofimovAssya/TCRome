@@ -234,7 +234,7 @@ class AllSeqCNNbin(nn.Module):
             layers.append(layer)
 
         self.mlp_layers = nn.ModuleList(layers)
-        self.last_layer = nn.Linear(dim[-1], 1)
+        self.last_layer = nn.Linear(dim[-1], 2)
         self.softmax = nn.Softmax(dim=1)
 
 

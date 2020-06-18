@@ -180,10 +180,10 @@ def main(argv=None):
                 #inputs_h2 = inputs_h2.squeeze().permute(0, 2, 1)
                 #inputs_h3 = inputs_h3.squeeze().permute(0, 2, 1)
                 #inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
-                #y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
-                #                  inputs_h4).float()
+                inputs_k,inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets = training.allseq_batch(mini,opt)
+                y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
+                                  inputs_h4).float()
                 #y_pred = y_pred.permute(1,0)
-                y_pred, my_model, targets = training.allseq_batch(mini,opt,my_model)
                 if no_b == 10:
                     print ('******')
                     print ((y_pred.data.cpu().numpy()))
@@ -240,9 +240,10 @@ def main(argv=None):
                 #inputs_h2 = inputs_h2.squeeze().permute(0, 2, 1)
                 #inputs_h3 = inputs_h3.squeeze().permute(0, 2, 1)
                 #inputs_h4 = inputs_h4.squeeze().permute(0, 2, 1)
-                #y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
-                #                  inputs_h4).float()
-                y_pred, my_model, targets = training.binallseq_batch(mini,opt,my_model)
+                inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets = training.binallseq_batch(mini,opt)
+                y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
+                                  inputs_h4).float()
+                #import pdb;pdb.set_trace()
                 #y_pred = y_pred.permute(1,0)
                 #targets = torch.reshape(targets,(targets.shape[0],1))
 
