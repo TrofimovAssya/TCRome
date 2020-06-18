@@ -33,25 +33,24 @@ def build_parser():
     parser.add_argument('--tcr-size', default=27,type=int, help='length of the TCR sequence')
     parser.add_argument('--hla-size', default=34,type=int, help='length of the HLA sequence')
     parser.add_argument('--nb-kmer', default=1000,type=int, help='nb of different kmers')
-    parser.add_argument('--cache', default=0,type=int, help='nb of different kmers')
+    parser.add_argument('--cache', default=0,type=int, help='cache prefix for the dataset')
     parser.add_argument('--nb-tcr-to-sample', default=10000,type=int, help='nb of TCR to sample')
     # Model specific options
     parser.add_argument('--tcr-conv-layers-sizes', default=[20,1,18], type=int, nargs='+', help='TCR-Conv net config.')
     parser.add_argument('--hla-conv-layers-sizes', default=[20,1,25], type=int, nargs='+', help='HLA-Conv net config.')
-    parser.add_argument('--mlp-layers-size', default=[250, 75, 50, 25, 10], type=int, nargs='+', help='Number of layers to use.')
-    parser.add_argument('--emb_size', default=2, type=int, help='The size of the embeddings.')
+    parser.add_argument('--mlp-layers-size', default=[250, 75, 50, 25, 10], type=int, nargs='+', help='MLP config')
+    parser.add_argument('--emb_size', default=10, type=int, help='The size of the embeddings.')
     parser.add_argument('--loss', choices=['NLL', 'MSE'], default = 'MSE', help='The cost function to use')
-
-    parser.add_argument('--weight-decay', default=1e-5, type=float, help='The size of the embeddings.')
+    parser.add_argument('--weight-decay', default=1e-5, type=float, help='Weight decay parameter.')
     parser.add_argument('--model', choices=['RNN','TCRonly',
                                             'allseq','allseq_bin'], default='TCRonly', help='Which model to use.')
-    parser.add_argument('--cpu', action='store_true', help='If we want to run on cpu.') # TODO: should probably be cpu instead.
+    parser.add_argument('--cpu', action='store_true', help='True if no gpu to be used')
     parser.add_argument('--name', type=str, default=None, help="If we want to add a random str to the folder.")
-    parser.add_argument('--gpu-selection', type=int, default=0, help="selectgpu")
+    parser.add_argument('--gpu-selection', type=int, default=0, help="gpu selection")
 
 
     # Monitoring options
-    parser.add_argument('--save-error', action='store_true', help='If we want to save the error for each tissue and each gene at every epoch.')
+    parser.add_argument('--plot-frequency', default=1, type=int, help='frequency (in nb epochs at which to generate training curve')
     parser.add_argument('--load-folder', help='The folder where to load and restart the training.')
     parser.add_argument('--save-dir', default='./testing123/', help='The folder where everything will be saved.')
 
@@ -233,6 +232,8 @@ def main(argv=None):
         monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
         monitoring.update_loss_dict(loss_dict, start=False)
         monitoring.save_loss(loss_dict,exp_dir)
+        if t % opt.plot_frequency==0:
+            monitoring.plot_training_curve(exp_dir, loss_dict).
 
 
 

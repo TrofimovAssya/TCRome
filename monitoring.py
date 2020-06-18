@@ -6,6 +6,7 @@ import shutil
 import models
 import datetime
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def save_loss(loss_dict,exp_dir):
     np.save(f'{exp_dir}/training_loss.npy',loss_dict['training_loss'])
@@ -49,19 +50,18 @@ def create_experiment_folder(opt):
 
     return exp_dir
 
-def plot_sample_embs():
+def plot_training_curve(exp_dir, loss_dict):
+    train = loss_dict['train_loss']
+    plt.plot(np.arange(len(train)), train, c='orange', label='training')
+    if 'valid_loss' in loss_dict:
+        valid = loss_dict['valid_loss']
+        plt.plot(np.arange(len(valid)), valid, c='blue', label='validation')
 
-    pass   
-
-    plt.figure()
-
-    plt.title(title)
-    plt.xlabel('emb1')
-    plt.ylabel('emb2')
+    plt.xlabel('epochs')
+    plt.ylabel('error')
     plt.legend()
 
-
-    img_path = os.path.join(output, f'{fname}.png')
+    img_path = os.path.join(exp_dir,f'training_curve.png')
     plt.savefig(img_path)
 
 
