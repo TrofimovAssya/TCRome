@@ -8,6 +8,22 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
+def get_hla_representations(model,hla_list_path):
+    hlas = np.load(hla_list_path)
+    reprez = np.zeros((hlas.shape[0],opt.emb_size))
+    for ix,hla in enumerate(hlas):
+        reprez[ix,:] = model.encode_hla(hla)
+    return reprez
+
+
+def get_tcr_representations(model,tcrs):
+    reprez = np.zeros((tcrs.shape[0],opt.emb_size))
+    for ix,tcr in enumerate(tcrs):
+        reprez[ix,:] = model.encode_tcr(tcr)
+    return reprez
+
+
 def save_loss(loss_dict,exp_dir):
     np.save(f'{exp_dir}/training_loss.npy',loss_dict['training_loss'])
     if 'valid_loss' in loss_dict:
