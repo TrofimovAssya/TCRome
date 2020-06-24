@@ -65,11 +65,57 @@ def evaluate_mhc_representations(mhc_reprez,
 def evaluate_jgene_bypatient(on_umap=True):
     pass
 
-def evaluate_jgene_staticset(on_umap=True):
+def evaluate_jgene_staticset(seqset,
+                             on_umap=True):
     pass
 
 def get_umap():
     pass
+
+def knn(data, labels, chosenk = 5,
+        optimize_k = False, nb_shuffles=20):
+
+
+    if optimize_k:
+        nneigh = []
+        valid_perf = []
+        shuffles = []
+        for i in range(nb_shuffles):
+            print (f'Shuffle #{i}')
+            start = time.time()
+            shuffles.append(i)
+            index_shuffles = np.random.permutation(np.arange(data.shape[0]))
+            split_80 = int(data.shape[0]*0.8)
+            split_90 = int(data.shape[0]*0.9)
+            train_ix, valid_ix, test_ix = index_shuffles[:split_80],index_shuffles[split_80:split_90], index_shuffles[split_90:]
+            for k in [2,3,4,5,6,10,15,20,25,30,35,40,45,100,200]:
+                clf = KNeighborsClassifier(n_neighbors=k)
+                clf.fit(data[train_ix,:],labels[train_ix])
+                perf = np.sum([i==j for i,j in
+                               zip(clf.predict(data[valid_ix,:]),labels[valid_ix])])/valid_ix.shape[0]
+                nneigh.append(k)
+                valid_perf.append(perf)
+                print (k)
+            stop = time.time()
+            elapsed = stop-start
+            print (f'took {elapsed} seconds')
+        result = pd.DataFrame([nneigh,valid_perf,shuffles]).T
+        result.columns = ['n_neigh','perf','shuffle']
+        chosenk = list(result.iloc[np.argmax(result['perf']),:]['n_neigh'])[0]
+    else:
+        print ('splitting data')
+        index_shuffles = np.random.permutation(np.arange(data.shape[0]))
+        split_80 = int(data.shape[0]*0.8)
+        split_90 = int(data.shape[0]*0.9)
+        train_ix, valid_ix, test_ix = index_shuffles[:split_80],index_shuffles[split_80:split_90], index_shuffles[split_90:]
+
+    clf = KNeighborsClassifier(n_neighbors=chosenk)
+    clf.fit(data[np.hstack((train_ix,valid_ix)),:],labels[np.hstack((train_ix,valid_ix))])
+    perf = np.sum([i==j for i,j in
+                   zip(clf.predict(data[test_ix,:]),labels[test_ix])])/test_ix.shape[0]
+    print (f'Final performance {perf}')
+    return perf
+
 
 
 
