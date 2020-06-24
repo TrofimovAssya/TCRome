@@ -13,11 +13,54 @@ def evaluate_model(opt, model):
 
     ### calculating the performance for various tasks of  the trained model
     ### MHC cluster correlation
-
+    pcc = evaluate_mhc_representations(mhc_reprez)
     pass
 
-def evaluate_mhc_representations(mhc_reprez, evalist):
-    pass
+def evaluate_mhc_representations(mhc_reprez,
+                                 mhclist='data/hla_for_model_eval/mhc_eval_list_names.csv/',
+                                 evalist='data/hla_for_model_eval/small_set_hla_MHCcluster_dist',
+                                 nb_pairs = 1000):
+
+    mhcclust = pd.read_csv(evalist, sep='\t',index_col=0)
+    mhclist = pd.read_csv(mhclist,header=None)[0]
+
+    ### reordering mhcclust so that the indices orders match the list
+    reorder_mhcclust = np.zeros(mhcclust.shape)
+    temp = np.array(mhcclust)
+    mhcclust_cols = list(mhcclust.columns)
+    for hla1 in mhclist:
+        h1 = mhcclust_cols.index(hla1)
+        i = mhclist.index(hla1)
+        for hla2 in mhclist:
+            h2 = mhcclust_cols.index(hla2)
+            j = mhclist.index(hla2)
+            reorder_mhcclust[i,j] = temp[h1,h2]
+
+
+    ### pickling a random number of pairs of hlas
+    indices = np.random.choice(range(mhcclust.shape[0]), nb_pairs)
+
+    mhcdist = []
+    fedist = []
+
+    for i,j in zip(indices[:-1],indices[1:]):
+        mhcdist.append(reorder_mhcclust[i,j])
+        fedist.append(t.iloc[i,j])
+        ed = np.linalg.norm((mhc_reprez[i]-mhc_reprez[j]))
+
+    pcc = np.corrcoef(mhcdist,fedist)[0.1]
+
+    plt.plot(mhcdist, fedist)
+
+    plt.xlabel('MHCclust distance')
+    plt.ylabel('Embedding distance')
+
+    img_path = os.path.join(exp_dir,f'mhc_eval_plot.png')
+    plt.savefig(img_path)
+
+    return pcc
+
+
 
 def evaluate_jgene_bypatient(on_umap=True):
     pass
