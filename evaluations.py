@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import random
 import torch
@@ -7,6 +8,8 @@ import models
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+import umap
+from sklearn.neighbors import KNeighborsClassifier
 
 
 def evaluate_model(opt, model):
@@ -14,7 +17,19 @@ def evaluate_model(opt, model):
     ### calculating the performance for various tasks of  the trained model
     ### MHC cluster correlation
     pcc = evaluate_mhc_representations(mhc_reprez)
-    pass
+    acc, results = evaluate_jgene_bypatient(tcr_rep_dir, patient_to_index,original_data_dir,
+                                            nb_patients = 15, on_umap=True, train_on_index = 0):
+
+
+
+
+
+
+
+
+
+
+
 
 def evaluate_mhc_representations(mhc_reprez,
                                  mhclist='data/hla_for_model_eval/mhc_eval_list_names.csv/',
@@ -62,18 +77,60 @@ def evaluate_mhc_representations(mhc_reprez,
 
 
 
-def evaluate_jgene_bypatient(on_umap=True):
-    pass
+def evaluate_jgene_bypatient(tcr_rep_dir,
+                             patient_to_index,
+                             original_data_dir,
+                             nb_patients = 15,
+                             on_umap=True,
+                            train_on_index = 0):
+
+    tcr_rep_files = os.listdir(tcr_rep_dir)[:nb_patients]
+    print ('optimizing knn for the chosen patient:{tcr_rep_file[train_on_index]}')
+    tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_file[train_on_index]}')
+    if on_umap:
+        print ('getting umap')
+        tcr_embs = get_umap(tcr_embs)
+    clf = get_knn(tcr_embs, labels, optimize_k=True, return_model=True)
+
+    print ('looping through patients')
+    scores = []
+    patient_names = []
+    for patient in tcr_rep_files:
+        print (f'Doing patient {tcr_rep_files.index(patient)}/{len(tcr_rep_files)}')
+        tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_file[train_on_index]}')
+        if on_umap:
+            print ('getting umap')
+            tcr_embs = get_umap(tcr_embs)
+        labels = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
+        labels = labels['j_gene']
+
+        if not labels.shape[0]==tcr_embs.shape[0]:
+            import pdb;pdb.set_trace(0)
+        scores.append(clf.score(tcr_embs, labels))
+        patient_names.append(data_file)
+
+    perf = np.mean(scores)
+    result = pd.DataFrame([scores, patient_names]).T
+    result.columns = ['accuracy', 'patient_names']
+
+    return perf, result
+
+
 
 def evaluate_jgene_staticset(seqset,
                              on_umap=True):
     pass
 
-def get_umap():
-    pass
 
-def knn(data, labels, chosenk = 5,
-        optimize_k = False, nb_shuffles=20):
+def get_umap(emb):
+    reducer = umap.UMAP(verbose=1)
+    emb = reducer.fit_transform(emb)
+    return emb
+
+
+
+def get_knn(data, labels, chosenk = 5,
+        optimize_k = False, nb_shuffles=20,return_model=False):
 
 
     if optimize_k:
@@ -114,7 +171,10 @@ def knn(data, labels, chosenk = 5,
     perf = np.sum([i==j for i,j in
                    zip(clf.predict(data[test_ix,:]),labels[test_ix])])/test_ix.shape[0]
     print (f'Final performance {perf}')
-    return perf
+    if return_model:
+        return model
+    else:
+        return perf
 
 
 
