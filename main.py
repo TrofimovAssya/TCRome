@@ -258,10 +258,11 @@ def main(argv=None):
     
     nb_patients = 15
 
-    evaluations.evaluate_model(opt, my_model ,exp_dir, tcr_rep_dir, patient_to_index, 
+    json_file = evaluations.evaluate_model(opt, my_model ,exp_dir, tcr_rep_dir, patient_to_index, 
                           original_data_dir, validation_scores, nb_patients,
                            train_on_index=0)
-
+    with open(f'{exp_dir}/evaluation_results.json', 'w') as json_file:
+            json.dump(output, json_file)
 
 if __name__ == '__main__':
     main()

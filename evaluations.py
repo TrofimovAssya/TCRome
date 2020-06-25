@@ -38,13 +38,13 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
     if on_umap:
         to_json['tcr_knn_emb'] = acc[0]
         to_json['tcr_knn_umap'] = acc[1]
-        to_json['tcr_knn_scores']['umap_scores'] = results[1]['accuracy']
-        to_json['tcr_knn_scores']['emb_scores'] = results[0]['accuracy']
-        to_json['tcr_knn_scores']['patient_names'] = results[0]['patient_names']
+        to_json['tcr_knn_scores']['umap_scores'] = np.array(results[1]['accuracy'])
+        to_json['tcr_knn_scores']['emb_scores'] = np.array(results[0]['accuracy'])
+        to_json['tcr_knn_scores']['patient_names'] = np.array(results[0]['patient_names'])
     else:
         to_json['tcr_knn_emb'] = acc
-        to_json['tcr_knn_socres']['emb_scores'] = results['accuracy']
-        to_json['tcr_knn_socres']['patient_names'] = results['patient_names']
+        to_json['tcr_knn_socres']['emb_scores'] = np.array(results['accuracy'])
+        to_json['tcr_knn_socres']['patient_names'] = np.array(results['patient_names'])
 
     if not validation_scores==None:
         to_json['valid'] = np.mean('validation')
@@ -243,7 +243,8 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
         perf1 = np.mean(scores_umap)
         result1 = pd.DataFrame([scores_umap, patient_names]).T
         result1.columns = ['accuracy', 'patient_names']
-        return [perf,perf1] [result, result1]
+        import pdb;pdb.set_trace()
+        return [perf,perf1], [result, result1]
     else:
         return perf, result
 
