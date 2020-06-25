@@ -3,6 +3,7 @@ matplotlib.use('Agg')
 import os
 import json
 import numpy as np
+from torch.autograd import Variable
 import random
 import torch
 import json
@@ -14,14 +15,14 @@ import umap
 from sklearn.neighbors import KNeighborsClassifier
 
 
-def evaluate_model(opt, model, mhc_reprez, tcr_rep_dir, patient_to_index,
+def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
                    original_data_dir, validation_scores = None, nb_patients=15, train_on_index = 0,
                    on_umap=True):
 
     ### calculating the performance for various tasks of  the trained model
     ### MHC cluster correlation
     to_json = {}
-    pcc = evaluate_mhc_representations(mhc_reprez)
+    pcc = evaluate_mhc_representations(exp_dir, model, opt)
     to_json['mhc_pcc'] = pcc
 
 
@@ -51,7 +52,9 @@ def evaluate_model(opt, model, mhc_reprez, tcr_rep_dir, patient_to_index,
 
 
 
-def evaluate_mhc_representations(mhc_reprez,
+def evaluate_mhc_representations(exp_dir,
+                                 my_model,
+                                 opt,
                                  mhclist='data/hla_for_model_eval/mhc_eval_list_names.csv',
                                  evalist='data/hla_for_model_eval/small_set_hla_MHCcluster_dist',
                                  nb_pairs = 1000):
@@ -79,6 +82,16 @@ def evaluate_mhc_representations(mhc_reprez,
     mhcdist = []
     fedist = []
     ###TODO: mhcreprez is only a directory. It should be the mhc
+    mhcseq = np.load('data/hla_for_model_eval/mhc_eval_list_sequences.npy')
+    mhcseq = torch.FloatTensor(mhcseq)
+    mhcseq = Variable(mhcseq,requires_grad=False).float()
+    if not opt.cpu:
+        mhcseq = mhcseq.cuda(opt.gpu_selection)
+    mhcseq = mhcseq.permute(0, 2, 1)
+
+
+    mhc_reprez = my_model.encode_hla(mhcseq)
+    mhc_reprez = mhc_reprez.cpu().data.numpy()
     ###representations instead
 
     for i,j in zip(indices[:-1],indices[1:]):
@@ -86,8 +99,9 @@ def evaluate_mhc_representations(mhc_reprez,
         ed = np.linalg.norm((mhc_reprez[i]-mhc_reprez[j]))
         fedist.append(ed)
 
-    pcc = np.corrcoef(mhcdist,fedist)[0.1]
+    pcc = np.corrcoef(mhcdist,fedist)[0,1]
 
+    import pdb;pdb.set_trace()
     plt.plot(mhcdist, fedist)
 
     plt.xlabel('MHCclust distance')
