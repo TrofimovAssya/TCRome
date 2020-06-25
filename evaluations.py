@@ -28,8 +28,8 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
 
 
     acc, results = evaluate_jgene_bypatient(tcr_rep_dir,
-                                                patient_to_index,original_data_dir,
-                                                nb_patients = 15,
+                                            patient_to_index,original_data_dir,
+                                            opt.cache, nb_patients = 15,
                                                 on_umap=on_umap,
                                                 train_on_index = 0)
 
@@ -82,7 +82,6 @@ def evaluate_mhc_representations(exp_dir,
 
     mhcdist = []
     fedist = []
-    ###TODO: mhcreprez is only a directory. It should be the mhc
     mhcseq = np.load('data/hla_for_model_eval/mhc_eval_list_sequences.npy')
     mhcseq = torch.FloatTensor(mhcseq)
     mhcseq = Variable(mhcseq,requires_grad=False).float()
@@ -93,7 +92,6 @@ def evaluate_mhc_representations(exp_dir,
 
     mhc_reprez = my_model.encode_hla(mhcseq)
     mhc_reprez = mhc_reprez.cpu().data.numpy()
-    ###representations instead
 
     for i,j in zip(indices[:-1],indices[1:]):
         mhcdist.append(reorder_mhcclust[i,j])
@@ -114,9 +112,36 @@ def evaluate_mhc_representations(exp_dir,
 
 
 
+def get_grantham(flocation = 'data/grantham.json'):
+    grantham = json.load(open(flocation,'r'))
+    return grantham
+
+
+
+def get_sequences(seq_table):
+    grantham = get_grantham()
+    output_table = []
+    for seq in seq_table:
+        output_table.append(get_sequence_from_grantham(grantham,seq))
+    return output_table
+
+def get_sequence_from_grantham(grantham, sequence):
+    seq = []
+    for vec in sequence:
+        for k in grantham:
+            if np.all([i==j for i,j in zip(list(vec),grantham[k])]):
+                seq.append(k)
+            else:
+                seq.append('')
+    seq = ''.join(seq)
+    return seq
+
+
+
 def evaluate_jgene_bypatient(tcr_rep_dir,
                              patient_to_index,
                              original_data_dir,
+                             cache,
                              nb_patients = 15,
                              on_umap=True,
                             train_on_index = 0):
@@ -134,14 +159,36 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
     else:
         data_file = data_file[0]
         data_file = f'{data_file}.tsv'
-    labels = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
-    labels = labels['j_gene']
-    ### TODO: here we need to load the TCR seq set and decode to the original
-    ### AA. From there, we need to get the j_genes!
+    original_file = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
+
+    ### get the cached file
+    cached_data = np.load(f'cached_dataset/{cache}_{pt_file_index}_tcr_gd.npy')
+    seq_set = get_sequences(cached_data)
+    seq_set = pd.DataFrame(seq_set)
+    seq_set.columns = ['amino_acids']
+
+    ### appending the tcr_embs
+    emb_col = []
+    for i in range(tcr_embs.shape[1]):
+        seq_set[f'FE_{i}'] = tcr_embs[:,i]
+        emb_col.append(f'FE_{i}')
+
+    seq_set = seq_set[np.logical_not(seq_set['amino_acids'] == '')]
+
+    temp_original_file = original_file[['amino_acid','j_gene']]
+
+    seq_set = seq_set.merge(temp_original_file, left_on='amino_acids', right_on='amino_acid')
+    seq_set = seq_set.drop_duplicates()
+    labels = seq_set['j_gene']
+    tcr_embs = seq_set[emb_col]
+
 
     if on_umap:
         print ('getting umap')
         tcr_embs1 = get_umap(tcr_embs)
+        seq_set['UMAP_1'] = tcr_embs1[:,0]
+        seq_set['UMAP_2'] = tcr_embs1[:,1]
+
         clf1 = get_knn(tcr_embs1, labels, optimize_k=True, return_model=True)
 
     clf = get_knn(tcr_embs, labels, optimize_k=True, return_model=True)
@@ -161,16 +208,33 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
         else:
             data_file = data_file[0]
         data_file = f'{data_file}.tsv'
-        labels = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
-        labels = labels['j_gene']
+        ### get the cached file
+        cached_data = np.load(f'cached_dataset/{cache}_{pt_file_index}_tcr_gd.npy')
+        seq_set = get_sequences(cached_data)
+        seq_set = pd.DataFrame(seq_set)
+        seq_set.columns = ['amino_acids']
 
-        tcr_embs = np.load(f'{tcr_rep_dir}/{patient}')
-        if not labels.shape[0]==tcr_embs.shape[0]:
-            import pdb;pdb.set_trace()
+        ### appending the tcr_embs
+        emb_col = []
+        for i in range(tcr_embs.shape[1]):
+            seq_set[f'FE_{i}'] = tcr_embs[:,i]
+            emb_col.append(f'FE_{i}')
+
+        seq_set = seq_set[np.logical_not(seq_set['amino_acids'] == '')]
+
+        temp_original_file = original_file[['amino_acid','j_gene']]
+
+        seq_set = seq_set.merge(temp_original_file, left_on='amino_acids', right_on='amino_acid')
+        seq_set = seq_set.drop_duplicates()
+        labels = seq_set['j_gene']
+        tcr_embs = seq_set[emb_col]
+
 
         if on_umap:
             print ('getting umap')
             tcr_embs1 = get_umap(tcr_embs)
+            seq_set['UMAP_1'] = tcr_embs1[:,0]
+            seq_set['UMAP_2'] = tcr_embs1[:,1]
             scores_umap.append(clf1.score(tcr_embs1, labels))
 
         scores.append(clf.score(tcr_embs, labels))

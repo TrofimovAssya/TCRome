@@ -222,17 +222,18 @@ def main(argv=None):
                                                    inputs_h4)
                 kmerembs1 = kmerembs[0].squeeze()
                 bn = batch_number[0]
-                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
+                true_size = int(kmerembs1.shape[0]/2)
+                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs1.cpu().data.numpy()[:true_size])
 
                 for i in range(4):
                     kmerembs1 = kmerembs[i+1].squeeze()
                     kmerembs1 = kmerembs1[0]
-                    np.save(f'{exp_dir}/hla_embs/hla_embs_batch_{bn}_h{i+1}',kmerembs1.cpu().data.numpy())
+                    np.save(f'{exp_dir}/hla_embs/hla_embs_batch_{bn}_h{i+1}',kmerembs1.cpu().data.numpy()[:true_size])
 
 
                 kmerembs1 = my_model.hla_representation
                 kmerembs1 = kmerembs1[0].squeeze()
-                np.save(f'{exp_dir}/hla_embs/ppl_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
+                np.save(f'{exp_dir}/hla_embs/ppl_embs_batch_{bn}',kmerembs1.cpu().data.numpy()[:true_size])
 
 
         print ("Saving the model...")
