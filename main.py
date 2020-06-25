@@ -131,9 +131,6 @@ def main(argv=None):
         loss_dict = monitoring.update_loss_dict(loss_dict,start = True)
 
         for no_b, mini in enumerate(dataset):
-            loss_dict['train_losses_epoch'] = []
-            if not opt.model == 'TCRonly':
-                loss_dict['valid_losses_epoch'] = []
 
 
             if opt.model == 'TCRonly':
@@ -256,7 +253,6 @@ def main(argv=None):
     patient_to_index = f'data/hla_for_model_eval/pt_names.csv'
     original_data_dir = f'/u/trofimov/Emerson/original'
 
-    
     nb_patients = 15
 
     output = evaluations.evaluate_model(opt, my_model ,exp_dir, tcr_rep_dir, patient_to_index, 

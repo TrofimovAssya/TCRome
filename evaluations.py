@@ -29,9 +29,9 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
 
     acc, results = evaluate_jgene_bypatient(tcr_rep_dir,
                                             patient_to_index,original_data_dir,
-                                            opt.cache, exp_dir ,nb_patients = 2,
-                                                on_umap=on_umap,
-                                                train_on_index = 0)
+                                            opt.cache, exp_dir,
+                                            nb_patients = nb_patients, on_umap=on_umap,
+                                            train_on_index = 0)
 
 
     if on_umap:
@@ -106,6 +106,7 @@ def evaluate_mhc_representations(exp_dir,
 
     img_path = os.path.join(exp_dir,f'mhc_eval_plot.png')
     plt.savefig(img_path)
+    plt.close()
 
     return pcc
 
