@@ -136,6 +136,38 @@ def get_sequence_from_grantham(grantham, sequence):
     seq = ''.join(seq)
     return seq
 
+def get_pt_file_ix(fname):
+    pt_file_index = fname.split('_')
+    pt_file_index = pt_file_index[-1].split('.')[0]
+    pt_file_index = int(pt_file_index)
+    return pt_file_index
+
+
+def load_original(pt2ix, pt_file, datadir):
+    data_file = list(pt2ix[pt2ix[0]==pt_file][1])
+    if len(data_file) == 0:
+        import pdb;pdb.set_trace()
+    else:
+        data_file = data_file[0]
+        data_file = f'{data_file}.tsv'
+    original_file = pd.read_csv(f'{datadir}/{data_file}',sep='\t')
+    return original_file, data_file
+
+def get_seq_set(cache, pt_file_index, tcr_embs, original_file):
+    cached_data = np.load(f'cached_dataset/{cache}_{pt_file_index}_tcr_gd.npy')
+    seq_set = get_sequences(cached_data)
+    seq_set = pd.DataFrame(seq_set)
+    seq_set.columns = ['amino_acids']
+    emb_col = []
+    for i in range(tcr_embs.shape[1]):
+        seq_set[f'FE_{i}'] = tcr_embs[:,i]
+        emb_col.append(f'FE_{i}')
+    seq_set = seq_set[np.logical_not(seq_set['amino_acids'] == '')]
+    temp_original_file = original_file[['amino_acid','j_gene']]
+    seq_set = seq_set.merge(temp_original_file, left_on='amino_acids', right_on='amino_acid')
+    seq_set = seq_set.drop_duplicates()
+    return seq_set, emb_col
+
 
 
 def evaluate_jgene_bypatient(tcr_rep_dir,
@@ -148,39 +180,17 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
 
     tcr_rep_files = os.listdir(tcr_rep_dir)[:nb_patients]
     patient_to_index = pd.read_csv(patient_to_index, header=None)
+
     print (f'optimizing knn for the chosen patient:{tcr_rep_files[train_on_index]}')
     tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_files[train_on_index]}')
-    pt_file_index = tcr_rep_files[train_on_index].split('_')
-    pt_file_index = pt_file_index[-1].split('.')[0]
-    pt_file_index = int(pt_file_index)
-    data_file = list(patient_to_index[patient_to_index[0]==pt_file_index][1])
-    if len(data_file)==0:
-        import pdb;pdb.set_trace()
-    else:
-        data_file = data_file[0]
-        data_file = f'{data_file}.tsv'
-    original_file = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
+    pt_file_index = get_pt_file_ix(tcr_rep_files[train_on_index])
+    original_file, data_file = load_original(patient_to_index, pt_file_index,
+                                             original_data_dir)
+    seq_set, emb_col = get_seq_set(cache, pt_file_index, tcr_embs, original_file)
 
-    ### get the cached file
-    cached_data = np.load(f'cached_dataset/{cache}_{pt_file_index}_tcr_gd.npy')
-    seq_set = get_sequences(cached_data)
-    seq_set = pd.DataFrame(seq_set)
-    seq_set.columns = ['amino_acids']
 
-    ### appending the tcr_embs
-    emb_col = []
-    for i in range(tcr_embs.shape[1]):
-        seq_set[f'FE_{i}'] = tcr_embs[:,i]
-        emb_col.append(f'FE_{i}')
-
-    seq_set = seq_set[np.logical_not(seq_set['amino_acids'] == '')]
-
-    temp_original_file = original_file[['amino_acid','j_gene']]
-
-    seq_set = seq_set.merge(temp_original_file, left_on='amino_acids', right_on='amino_acid')
-    seq_set = seq_set.drop_duplicates()
-    labels = seq_set['j_gene']
-    tcr_embs = seq_set[emb_col]
+    labels = np.array(seq_set['j_gene'])
+    tcr_embs = np.array(seq_set[emb_col])
 
 
     if on_umap:
@@ -199,35 +209,16 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
     scores_umap = []
     for patient in tcr_rep_files:
         print (f'Doing patient {tcr_rep_files.index(patient)}/{len(tcr_rep_files)}')
-        pt_file_index = patient.split('_')
-        pt_file_index = pt_file_index[-1].split('.')[0]
-        pt_file_index = int(pt_file_index)
-        data_file = list(patient_to_index[patient_to_index[0]==pt_file_index][1])
-        if len(data_file)==0:
-            import pdb;pdb.set_trace()
-        else:
-            data_file = data_file[0]
-        data_file = f'{data_file}.tsv'
-        ### get the cached file
-        cached_data = np.load(f'cached_dataset/{cache}_{pt_file_index}_tcr_gd.npy')
-        seq_set = get_sequences(cached_data)
-        seq_set = pd.DataFrame(seq_set)
-        seq_set.columns = ['amino_acids']
 
-        ### appending the tcr_embs
-        emb_col = []
-        for i in range(tcr_embs.shape[1]):
-            seq_set[f'FE_{i}'] = tcr_embs[:,i]
-            emb_col.append(f'FE_{i}')
+        tcr_embs = np.load(f'{tcr_rep_dir}/{patient}')
+        pt_file_index = get_pt_file_ix(patient)
+        original_file, data_file = load_original(patient_to_index, pt_file_index,
+                                             original_data_dir)
+        seq_set, emb_col = get_seq_set(cache, pt_file_index, tcr_embs, original_file)
 
-        seq_set = seq_set[np.logical_not(seq_set['amino_acids'] == '')]
 
-        temp_original_file = original_file[['amino_acid','j_gene']]
-
-        seq_set = seq_set.merge(temp_original_file, left_on='amino_acids', right_on='amino_acid')
-        seq_set = seq_set.drop_duplicates()
-        labels = seq_set['j_gene']
-        tcr_embs = seq_set[emb_col]
+        labels = np.array(seq_set['j_gene'])
+        tcr_embs = np.array(seq_set[emb_col])
 
 
         if on_umap:
@@ -235,9 +226,13 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
             tcr_embs1 = get_umap(tcr_embs)
             seq_set['UMAP_1'] = tcr_embs1[:,0]
             seq_set['UMAP_2'] = tcr_embs1[:,1]
-            scores_umap.append(clf1.score(tcr_embs1, labels))
+            sc = clf1.score(tcr_embs1, labels)
+            print (f'KNN-UMAP score: {sc}')
+            scores_umap.append(sc)
 
-        scores.append(clf.score(tcr_embs, labels))
+        sc = clf.score(tcr_embs, labels)
+        print (f'KNN score: {sc}')
+        scores.append(sc)
         patient_names.append(data_file)
 
     perf = np.mean(scores)
@@ -246,9 +241,9 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
 
     if on_umap:
         perf1 = np.mean(scores_umap)
-        result1 = pd.DataFrame([scores_umap, patient_names])
+        result1 = pd.DataFrame([scores_umap, patient_names]).T
         result1.columns = ['accuracy', 'patient_names']
-        return [perf,perf1] [resul, result1]
+        return [perf,perf1] [result, result1]
     else:
         return perf, result
 
@@ -283,13 +278,14 @@ def get_knn(data, labels, chosenk = 5,
             split_90 = int(data.shape[0]*0.9)
             train_ix, valid_ix, test_ix = index_shuffles[:split_80],index_shuffles[split_80:split_90], index_shuffles[split_90:]
             for k in [2,3,4,5,6,10,15,20,25,30,35,40,45,100,200]:
-                clf = KNeighborsClassifier(n_neighbors=k)
-                clf.fit(data[train_ix,:],labels[train_ix])
-                perf = np.sum([i==j for i,j in
-                               zip(clf.predict(data[valid_ix,:]),labels[valid_ix])])/valid_ix.shape[0]
-                nneigh.append(k)
-                valid_perf.append(perf)
-                print (k)
+                if not k>len(train_ix):
+                    clf = KNeighborsClassifier(n_neighbors=k)
+                    clf.fit(data[train_ix,:],labels[train_ix])
+                    perf = np.sum([i==j for i,j in
+                                   zip(clf.predict(data[valid_ix,:]),labels[valid_ix])])/valid_ix.shape[0]
+                    nneigh.append(k)
+                    valid_perf.append(perf)
+                    print (k)
             stop = time.time()
             elapsed = stop-start
             print (f'took {elapsed} seconds')
