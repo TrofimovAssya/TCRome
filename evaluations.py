@@ -24,30 +24,29 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
     ### MHC cluster correlation
     to_json = {}
     pcc = evaluate_mhc_representations(exp_dir, model, opt)
-    to_json['mhc_pcc'] = pcc
+    to_json['mhc_pcc'] = float(pcc)
 
 
     acc, results = evaluate_jgene_bypatient(tcr_rep_dir,
                                             patient_to_index,original_data_dir,
-                                            opt.cache, nb_patients = 15,
+                                            opt.cache, exp_dir ,nb_patients = 2,
                                                 on_umap=on_umap,
                                                 train_on_index = 0)
 
-    to_json['tcr_knn_scores'] = {}
 
     if on_umap:
-        to_json['tcr_knn_emb'] = acc[0]
-        to_json['tcr_knn_umap'] = acc[1]
-        to_json['tcr_knn_scores']['umap_scores'] = np.array(results[1]['accuracy'])
-        to_json['tcr_knn_scores']['emb_scores'] = np.array(results[0]['accuracy'])
-        to_json['tcr_knn_scores']['patient_names'] = np.array(results[0]['patient_names'])
+        to_json['tcr_knn_emb'] = float(acc[0])
+        to_json['tcr_knn_umap'] = float(acc[1])
+        to_json['tcr_knn_umap_scores'] = list(results[1]['accuracy'])
+        to_json['tcr_knn_emb_scores'] = list(results[0]['accuracy'])
+        to_json['tcr_knn_patient_names'] = list(results[0]['patient_names'])
     else:
-        to_json['tcr_knn_emb'] = acc
-        to_json['tcr_knn_socres']['emb_scores'] = np.array(results['accuracy'])
-        to_json['tcr_knn_socres']['patient_names'] = np.array(results['patient_names'])
+        to_json['tcr_knn_emb'] = float(acc)
+        to_json['tcr_knn_emb_scores'] = list(results['accuracy'])
+        to_json['tcr_knn_patient_names'] = list(results['patient_names'])
 
     if not validation_scores==None:
-        to_json['valid'] = np.mean('validation')
+        to_json['valid'] = float(np.mean(validation_scores))
 
     return to_json
 
@@ -100,7 +99,7 @@ def evaluate_mhc_representations(exp_dir,
 
     pcc = np.corrcoef(mhcdist,fedist)[0,1]
 
-    plt.plot(mhcdist, fedist)
+    plt.scatter(mhcdist, fedist)
 
     plt.xlabel('MHCclust distance')
     plt.ylabel('Embedding distance')
@@ -174,6 +173,7 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
                              patient_to_index,
                              original_data_dir,
                              cache,
+                             exp_dir,
                              nb_patients = 15,
                              on_umap=True,
                             train_on_index = 0):
@@ -202,6 +202,7 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
         clf1 = get_knn(tcr_embs1, labels, optimize_k=True, return_model=True)
 
     clf = get_knn(tcr_embs, labels, optimize_k=True, return_model=True)
+    seq_set.to_csv(f'{exp_dir}/umap_fe_vizualisation.csv')
 
     print ('looping through patients')
     scores = []
@@ -243,7 +244,6 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
         perf1 = np.mean(scores_umap)
         result1 = pd.DataFrame([scores_umap, patient_names]).T
         result1.columns = ['accuracy', 'patient_names']
-        import pdb;pdb.set_trace()
         return [perf,perf1], [result, result1]
     else:
         return perf, result
