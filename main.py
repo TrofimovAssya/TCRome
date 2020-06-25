@@ -12,6 +12,7 @@ import time
 import random
 import monitoring
 import training
+import evaluations
 #
 def build_parser():
     parser = argparse.ArgumentParser(description="")
@@ -99,11 +100,14 @@ def main(argv=None):
         criterion = torch.nn.NLLLoss()
         criterion = torch.nn.BCELoss()
 
-    if opt.model == 'TCRonly':
-        os.mkdir(f'{exp_dir}/kmer_embs/')
-    elif opt.model == 'allseq' or opt.model == 'allseq_bin':
-        os.mkdir(f'{exp_dir}/tcr_embs/')
-        os.mkdir(f'{exp_dir}/hla_embs/')
+
+
+    if not 'tcr_embs' in os.listdir(exp_dir):
+        if opt.model == 'TCRonly':
+            os.mkdir(f'{exp_dir}/tcr_embs/')
+        elif opt.model == 'allseq' or opt.model == 'allseq_bin':
+                os.mkdir(f'{exp_dir}/tcr_embs/')
+                os.mkdir(f'{exp_dir}/hla_embs/')
 
 
     if not opt.cpu:
@@ -126,6 +130,9 @@ def main(argv=None):
         loss_dict = monitoring.update_loss_dict(loss_dict,start = True)
 
         for no_b, mini in enumerate(dataset):
+            loss_dict['train_losses_epoch'] = []
+            if not opt.model == 'TCRonly':
+                loss_dict['valid_losses_epoch'] = []
 
 
             if opt.model == 'TCRonly':
@@ -229,12 +236,30 @@ def main(argv=None):
 
 
         print ("Saving the model...")
+        if opt.model=='allseq_bin' or opt.model=='allseq':
+            validation_scores = loss_dict['valid_losses_epoch']
+        else:
+            validation_scores = None
+
         monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
         monitoring.update_loss_dict(loss_dict, start=False)
         monitoring.save_loss(loss_dict,exp_dir)
         if t % opt.plot_frequency==0:
-            monitoring.plot_training_curve(exp_dir, loss_dict).
+            monitoring.plot_training_curve(exp_dir, loss_dict)
 
+
+
+    print ('Finished training! Starting evaluations')
+    tcr_rep_dir = f'{exp_dir}/tcr_embs'
+    patient_to_index = f'data/hla_for_model_eval/pt_names.csv'
+    original_data_dir = f'/u/trofimov/Emerson/'
+
+    
+    nb_patients = 15
+
+    evaluations.evaluate_model(opt, my_model, tcr_rep_dir, patient_to_index, 
+                          original_data_dir, validation_scores, nb_patients,
+                           train_on_index=0)
 
 
 if __name__ == '__main__':

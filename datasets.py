@@ -109,7 +109,7 @@ class BinaryTCRDataset(Dataset):
         self.root_dir = root_dir
         self.cache = cache
         data_path = os.path.join(root_dir, data_file)
-        self.data = np.load(data_path)
+        self.data = np.load(data_path)[:10]
         self.nb_patient = 10
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)

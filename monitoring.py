@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import os
 import numpy as np
 import random
@@ -25,21 +27,21 @@ def get_tcr_representations(model,tcrs):
 
 
 def save_loss(loss_dict,exp_dir):
-    np.save(f'{exp_dir}/training_loss.npy',loss_dict['training_loss'])
-    if 'valid_loss' in loss_dict:
-        np.save(f'{exp_dir}/validation_loss.npy',loss_dict['valid_loss'])
+    np.save(f'{exp_dir}/training_loss.npy',loss_dict['train_losses'])
+    if 'valid_losses' in loss_dict:
+        np.save(f'{exp_dir}/validation_loss.npy',loss_dict['valid_losses'])
 
 
 def update_loss_dict(loss_dict, start = False):
     if start:
         loss_dict['train_losses_epoch'] = []
-        if 'valid_loss' in loss_dict:
+        if 'valid_losses' in loss_dict:
             loss_dict['valid_losses_epoch'] = []
 
-    else start:
-        loss_dict['train_loss'].append(np.mean(loss_dict['train_losses_epoch']))
-        if 'valid_loss' in loss_dict:
-            loss_dict['valid_loss'].append(np.mean(loss_dict['valid_losses_epoch']))
+    else:
+        loss_dict['train_losses'].append(np.mean(loss_dict['train_losses_epoch']))
+        if 'valid_losses' in loss_dict:
+            loss_dict['valid_losses'].append(np.mean(loss_dict['valid_losses_epoch']))
     return loss_dict
 
 def create_experiment_folder(opt):
@@ -67,10 +69,10 @@ def create_experiment_folder(opt):
     return exp_dir
 
 def plot_training_curve(exp_dir, loss_dict):
-    train = loss_dict['train_loss']
+    train = loss_dict['train_losses']
     plt.plot(np.arange(len(train)), train, c='orange', label='training')
-    if 'valid_loss' in loss_dict:
-        valid = loss_dict['valid_loss']
+    if 'valid_losses' in loss_dict:
+        valid = loss_dict['valid_losses']
         plt.plot(np.arange(len(valid)), valid, c='blue', label='validation')
 
     plt.xlabel('epochs')

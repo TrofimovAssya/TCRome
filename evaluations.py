@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import os
 import json
 import numpy as np
@@ -50,17 +52,19 @@ def evaluate_model(opt, model, mhc_reprez, tcr_rep_dir, patient_to_index,
 
 
 def evaluate_mhc_representations(mhc_reprez,
-                                 mhclist='data/hla_for_model_eval/mhc_eval_list_names.csv/',
+                                 mhclist='data/hla_for_model_eval/mhc_eval_list_names.csv',
                                  evalist='data/hla_for_model_eval/small_set_hla_MHCcluster_dist',
                                  nb_pairs = 1000):
 
     mhcclust = pd.read_csv(evalist, sep='\t',index_col=0)
-    mhclist = pd.read_csv(mhclist,header=None)[0]
+    import pdb;pdb.set_trace()
+    mhclist = pd.read_csv(mhclist)['0']
 
     ### reordering mhcclust so that the indices orders match the list
     reorder_mhcclust = np.zeros(mhcclust.shape)
     temp = np.array(mhcclust)
     mhcclust_cols = list(mhcclust.columns)
+    import pdb;pdb.set_trace()
     for hla1 in mhclist:
         h1 = mhcclust_cols.index(hla1)
         i = mhclist.index(hla1)
