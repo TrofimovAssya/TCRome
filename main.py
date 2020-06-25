@@ -252,12 +252,12 @@ def main(argv=None):
     print ('Finished training! Starting evaluations')
     tcr_rep_dir = f'{exp_dir}/tcr_embs'
     patient_to_index = f'data/hla_for_model_eval/pt_names.csv'
-    original_data_dir = f'/u/trofimov/Emerson/'
+    original_data_dir = f'/u/trofimov/Emerson/original'
 
     
     nb_patients = 15
 
-    evaluations.evaluate_model(opt, my_model, tcr_rep_dir, patient_to_index, 
+    evaluations.evaluate_model(opt, my_model ,exp_dir, tcr_rep_dir, patient_to_index, 
                           original_data_dir, validation_scores, nb_patients,
                            train_on_index=0)
 

@@ -12,6 +12,7 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import umap
+import time
 from sklearn.neighbors import KNeighborsClassifier
 
 
@@ -101,7 +102,6 @@ def evaluate_mhc_representations(exp_dir,
 
     pcc = np.corrcoef(mhcdist,fedist)[0,1]
 
-    import pdb;pdb.set_trace()
     plt.plot(mhcdist, fedist)
 
     plt.xlabel('MHCclust distance')
@@ -122,10 +122,22 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
                             train_on_index = 0):
 
     tcr_rep_files = os.listdir(tcr_rep_dir)[:nb_patients]
-    print ('optimizing knn for the chosen patient:{tcr_rep_file[train_on_index]}')
-    tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_file[train_on_index]}')
+    patient_to_index = pd.read_csv(patient_to_index, header=None)
+    print (f'optimizing knn for the chosen patient:{tcr_rep_files[train_on_index]}')
+    tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_files[train_on_index]}')
+    pt_file_index = tcr_rep_files[train_on_index].split('_')
+    pt_file_index = pt_file_index[-1].split('.')[0]
+    pt_file_index = int(pt_file_index)
+    data_file = list(patient_to_index[patient_to_index[0]==pt_file_index][1])
+    if len(data_file)==0:
+        import pdb;pdb.set_trace()
+    else:
+        data_file = data_file[0]
+        data_file = f'{data_file}.tsv'
     labels = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
     labels = labels['j_gene']
+    ### TODO: here we need to load the TCR seq set and decode to the original
+    ### AA. From there, we need to get the j_genes!
 
     if on_umap:
         print ('getting umap')
@@ -140,18 +152,26 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
     scores_umap = []
     for patient in tcr_rep_files:
         print (f'Doing patient {tcr_rep_files.index(patient)}/{len(tcr_rep_files)}')
-        tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_file[train_on_index]}')
+        pt_file_index = patient.split('_')
+        pt_file_index = pt_file_index[-1].split('.')[0]
+        pt_file_index = int(pt_file_index)
+        data_file = list(patient_to_index[patient_to_index[0]==pt_file_index][1])
+        if len(data_file)==0:
+            import pdb;pdb.set_trace()
+        else:
+            data_file = data_file[0]
+        data_file = f'{data_file}.tsv'
         labels = pd.read_csv(f'{original_data_dir}/{data_file}',sep='\t')
         labels = labels['j_gene']
+
+        tcr_embs = np.load(f'{tcr_rep_dir}/{patient}')
+        if not labels.shape[0]==tcr_embs.shape[0]:
+            import pdb;pdb.set_trace()
 
         if on_umap:
             print ('getting umap')
             tcr_embs1 = get_umap(tcr_embs)
             scores_umap.append(clf1.score(tcr_embs1, labels))
-
-
-        if not labels.shape[0]==tcr_embs.shape[0]:
-            import pdb;pdb.set_trace(0)
 
         scores.append(clf.score(tcr_embs, labels))
         patient_names.append(data_file)
@@ -211,7 +231,9 @@ def get_knn(data, labels, chosenk = 5,
             print (f'took {elapsed} seconds')
         result = pd.DataFrame([nneigh,valid_perf,shuffles]).T
         result.columns = ['n_neigh','perf','shuffle']
-        chosenk = list(result.iloc[np.argmax(result['perf']),:]['n_neigh'])[0]
+        #chosenk = list(result.iloc[np.argmax(result['perf']),:]['n_neigh'])[0]
+        chosenk = result.iloc[np.argmax(result['perf']),:]['n_neigh']
+        chosenk = int(chosenk)
     else:
         print ('splitting data')
         index_shuffles = np.random.permutation(np.arange(data.shape[0]))
@@ -225,7 +247,7 @@ def get_knn(data, labels, chosenk = 5,
                    zip(clf.predict(data[test_ix,:]),labels[test_ix])])/test_ix.shape[0]
     print (f'Final performance {perf}')
     if return_model:
-        return model
+        return clf 
     else:
         return perf
 
