@@ -57,14 +57,13 @@ def evaluate_mhc_representations(mhc_reprez,
                                  nb_pairs = 1000):
 
     mhcclust = pd.read_csv(evalist, sep='\t',index_col=0)
-    import pdb;pdb.set_trace()
     mhclist = pd.read_csv(mhclist)['0']
+    mhclist = list(mhclist)
 
     ### reordering mhcclust so that the indices orders match the list
     reorder_mhcclust = np.zeros(mhcclust.shape)
     temp = np.array(mhcclust)
     mhcclust_cols = list(mhcclust.columns)
-    import pdb;pdb.set_trace()
     for hla1 in mhclist:
         h1 = mhcclust_cols.index(hla1)
         i = mhclist.index(hla1)
@@ -79,11 +78,13 @@ def evaluate_mhc_representations(mhc_reprez,
 
     mhcdist = []
     fedist = []
+    ###TODO: mhcreprez is only a directory. It should be the mhc
+    ###representations instead
 
     for i,j in zip(indices[:-1],indices[1:]):
         mhcdist.append(reorder_mhcclust[i,j])
-        fedist.append(t.iloc[i,j])
         ed = np.linalg.norm((mhc_reprez[i]-mhc_reprez[j]))
+        fedist.append(ed)
 
     pcc = np.corrcoef(mhcdist,fedist)[0.1]
 
