@@ -7,6 +7,10 @@ from itertools import chain
 
 class FactorizedCNN(nn.Module):
 
+    """
+    The standard model
+    """
+
     def __init__(self, conv_layers_sizes = [20,10,15,10,5,12], 
         mlp_layers_size = [25,10], 
         nb_samples=1, emb_size=10, 
@@ -73,6 +77,15 @@ class FactorizedCNN(nn.Module):
 
 class AllSeqCNN(nn.Module):
 
+    """
+    The patient index is replaced by a set of HLA sequences.
+    The HLA sequences are encoded by the same encoding function into a HLA space.
+    The set of HLA space coordinates are then encoded into a patient space.
+    This patient space is then fed to the rest of the model.
+    This patient space coordinate (based on the HLA) is what replaces the patient
+    index.
+    """
+
     def __init__(self, tcr_conv_layers_sizes = [20,1,18], 
         hla_conv_layers_sizes = [20,1,25], 
         mlp_layers_size = [25,10],
@@ -80,6 +93,7 @@ class AllSeqCNN(nn.Module):
         hla_input_size = 34, 
         nb_samples=1, emb_size=10, data_dir ='.'):
         super(AllSeqCNN, self).__init__()
+
 
         self.emb_size = emb_size
         self.sample = nb_samples
@@ -148,11 +162,12 @@ class AllSeqCNN(nn.Module):
         hla2 = self.encode_hla(hla2)
         hla3 = self.encode_hla(hla3)
         hla4 = self.encode_hla(hla4)
-        
+
         return tcr, hla1, hla2, hla3, hla4
 
 
-    def get_hla_rep(self, h1, h2, h3, h4): ### TODO: this should be called get individual rep.
+    def get_hla_rep(self, h1, h2, h3, h4):
+        ### TODO: this should be called get individual rep.
         self.hla_representation = torch.cat([h1.permute(1,0), h2.permute(1,0),
                                              h3.permute(1,0), h4.permute(1,0)])
         self.hla_representation = self.hla_mlp(self.hla_representation.permute(1,0))
@@ -172,7 +187,9 @@ class AllSeqCNN(nn.Module):
 
         if not emb_1.shape == emb_2.shape:
             import pdb; pdb.set_trace()
+        ### getting the hla representation
         hla_representation = self.get_hla_rep(emb_2, emb_3, emb_4, emb_5)
+        ### input to the MLP 
         mlp_input = torch.cat([emb_1, hla_representation], 1)
         # Forward pass.
         for layer in self.mlp_layers:
@@ -184,6 +201,11 @@ class AllSeqCNN(nn.Module):
 
 
 class AllSeqCNNbin(nn.Module):
+    '''
+    Similar to the AllSeqCNN model, except it operates on presence/absence of
+    TCR
+
+    '''
 
     def __init__(self, tcr_conv_layers_sizes = [20,1,18], 
         hla_conv_layers_sizes = [20,1,25], 
@@ -298,6 +320,15 @@ class AllSeqCNNbin(nn.Module):
 
 
 def get_model(opt, inputs_size, model_state=None):
+
+    """
+    There are 3 available models so far.
+    TCRonly - the vanilla model defined in the TLT paper
+    allseq - the model that replaces the patient index in the vanilla by a set of
+    HLA sequences
+    allseqbin - the model that replaces the label for a presence/absence of TCR and
+    adds negative examples.
+    """
 
     if opt.model == 'TCRonly' or opt.model=='RNN':
         model_class = FactorizedCNN
