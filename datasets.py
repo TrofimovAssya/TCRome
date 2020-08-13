@@ -32,6 +32,7 @@ class TCRDataset(Dataset):
         if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
             tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
             tcr = tcr[:self.nb_tcr_to_sample]
+            tcr/=np.max(tcr)
             np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
         else:
             tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
@@ -76,14 +77,19 @@ class TCRHLADataset(Dataset):
         if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
             tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
             tcr = tcr[:self.nb_tcr_to_sample]
+            tcr/=np.max(tcr)
             np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
         else:
             tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
 
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
+        h1/=np.max(h1)
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
+        h2/=np.max(h2)
         h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
+        h3/=np.max(h3)
         h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
+        h4/=np.max(h4)
         label = np.load(f'{self.root_dir}/{idx}_freq_log10.npy')
         ### to Z-scores? for better prediction?
         ### TODO: add this as a parameter for the model
@@ -112,12 +118,12 @@ class BinaryTCRDataset(Dataset):
     """
 
     def __init__(self,root_dir='.',save_dir='.', data_file='data.npy',
-                 nb_tcr_to_sample = 10000, cache='123abc'):
+                 nb_tcr_to_sample = 10000, nb_patient = 10, cache='123abc'):
         self.root_dir = root_dir
         self.cache = cache
         data_path = os.path.join(root_dir, data_file)
-        self.data = np.load(data_path)[:10]
-        self.nb_patient = 10
+        self.nb_patient = int(nb_patient)
+        self.data = np.load(data_path)[:self.nb_patient]
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
         print (self.nb_kmer)
@@ -135,6 +141,7 @@ class BinaryTCRDataset(Dataset):
             ### only keeping a certain number of TCR (the most abundant)
             ### TODO: this could be changed eventually
             tcr = tcr[:self.nb_tcr_to_sample]
+            #tcr/=np.max(tcr)
             np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
         else:
             tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
@@ -142,13 +149,18 @@ class BinaryTCRDataset(Dataset):
         if not f'{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
             tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
             tcr_n = tcr_n[:self.nb_tcr_to_sample]
+            #tcr_n/=np.max(tcr_n)
             np.save(f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy',tcr_n)
         else:
             tcr_n = np.load(f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy')
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
+        #h1/=np.max(h1)
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
+        #h2/=np.max(h2)
         h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
+        #h3/=np.max(h3)
         h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
+        #h4/=np.max(h4)
         ### stacking the negative and the positive examples. 
         ### The label will be created later 
         tcr_total = np.vstack((tcr,tcr_n))
@@ -169,6 +181,7 @@ class BinaryTCRDataset(Dataset):
 
 
 def get_dataset(opt, exp_dir):
+
     """
     Three datasets are implemented
     TCRDataset - the vanilla dataset [sample index, sequence] [abundance]
@@ -186,6 +199,7 @@ def get_dataset(opt, exp_dir):
         dataset = BinaryTCRDataset(root_dir=opt.data_dir,
                                    save_dir =exp_dir,data_file = opt.data_file,
                                    nb_tcr_to_sample = opt.nb_tcr_to_sample,
+                                   nb_patient = opt.nb_patient,
                                    cache = opt.cache)
     else:
         raise NotImplementedError()
@@ -195,4 +209,5 @@ def get_dataset(opt, exp_dir):
 
 def preprocessing(data_dir,fname):
     pass
+
 

@@ -282,7 +282,6 @@ class AllSeqCNNbin(nn.Module):
         hla2 = self.encode_hla(hla2)
         hla3 = self.encode_hla(hla3)
         hla4 = self.encode_hla(hla4)
-        
         return tcr, hla1, hla2, hla3, hla4
 
 

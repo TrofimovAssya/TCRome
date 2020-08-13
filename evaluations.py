@@ -20,19 +20,20 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
                    original_data_dir, validation_scores = None, nb_patients=15, train_on_index = 0,
                    on_umap=True):
 
-    ### calculating the performance for various tasks of  the trained model
+    ### calculating the performance for various tasks of the trained model
     ### MHC cluster correlation
     to_json = {}
     pcc = evaluate_mhc_representations(exp_dir, model, opt)
     to_json['mhc_pcc'] = float(pcc)
 
 
+    ### evaluating the j gene classification from the embedding space
+
     acc, results = evaluate_jgene_bypatient(tcr_rep_dir,
                                             patient_to_index,original_data_dir,
                                             opt.cache, exp_dir,
                                             nb_patients = nb_patients, on_umap=on_umap,
                                             train_on_index = 0)
-
 
     if on_umap:
         to_json['tcr_knn_emb'] = float(acc[0])
@@ -76,7 +77,7 @@ def evaluate_mhc_representations(exp_dir,
             reorder_mhcclust[i,j] = temp[h1,h2]
 
 
-    ### pickling a random number of pairs of hlas
+    ### picking a random number of pairs of hlas
     indices = np.random.choice(range(mhcclust.shape[0]), nb_pairs)
 
     mhcdist = []
@@ -196,6 +197,8 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
 
     if on_umap:
         print ('getting umap')
+        if tcr_embs.shape[0] <1:
+            import pdb;pdb.set_trace()
         tcr_embs1 = get_umap(tcr_embs)
         seq_set['UMAP_1'] = tcr_embs1[:,0]
         seq_set['UMAP_2'] = tcr_embs1[:,1]

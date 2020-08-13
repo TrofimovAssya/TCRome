@@ -40,10 +40,12 @@ def build_parser():
     # Model specific options
     parser.add_argument('--tcr-conv-layers-sizes', default=[20,1,18], type=int, nargs='+', help='TCR-Conv net config.')
     parser.add_argument('--hla-conv-layers-sizes', default=[20,1,25], type=int, nargs='+', help='HLA-Conv net config.')
+
+
     parser.add_argument('--mlp-layers-size', default=[250, 75, 50, 25, 10], type=int, nargs='+', help='MLP config')
     parser.add_argument('--emb_size', default=10, type=int, help='The size of the embeddings.')
     parser.add_argument('--loss', choices=['NLL', 'MSE'], default = 'MSE', help='The cost function to use')
-    parser.add_argument('--weight-decay', default=1e-5, type=float, help='Weight decay parameter.')
+    parser.add_argument('--weight-decay', default=0, type=float, help='Weight decay parameter.')
     parser.add_argument('--model', choices=['RNN','TCRonly',
                                             'allseq','allseq_bin'], default='TCRonly', help='Which model to use.')
     parser.add_argument('--cpu', action='store_true', help='True if no gpu to be used')
@@ -120,15 +122,23 @@ def main(argv=None):
     loss_dict = {}
     loss_dict['train_losses'] = []
 
+    def estimate_batch_accuracy(y,yhat):
+        return np.sum([i==j for i,j in zip(y,yhat)])/y.shape[0]
+
     if opt.model == 'allseq' or opt.model == 'allseq_bin':
         valid_list = np.load('/u/trofimov/Emerson/processed_data/valid_list.npy')
         loss_dict['valid_losses'] = []
+
+
+
 
     # The training.
     print ("Start training.")
     #monitoring and predictions
     for t in range(epoch, opt.epoch):
         loss_dict = monitoring.update_loss_dict(loss_dict,start = True)
+        if opt.model == 'allseq_bin':
+            good = 0
 
         for no_b, mini in enumerate(dataset):
 
@@ -136,6 +146,7 @@ def main(argv=None):
             if opt.model == 'TCRonly':
 
                 y_pred, my_model, targets = training.TCRonly_batch(mini,opt,my_model)
+
                 loss = criterion(y_pred, targets)
                 loss_save = loss.data.cpu().numpy().reshape(1,)[0]
                 loss_dict['train_losses_epoch'].append(loss_save)
@@ -163,6 +174,7 @@ def main(argv=None):
                 loss = criterion(y_pred, targets)
                 loss_save = loss.data.cpu().numpy().reshape(1,)[0]
                 if no_b in valid_list:
+
                     loss_dict['valid_losses_epoch'].append(loss_save)
                     print (f"Validation error {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
 
@@ -201,8 +213,13 @@ def main(argv=None):
                                   inputs_h4).float()
 
                 loss = criterion(y_pred, targets)
+                nb_pos = (np.sum(np.argmax(y_pred.cpu().detach().numpy(),axis=1))/y_pred.shape[0])
+                b_accuracy = (estimate_batch_accuracy(np.argmax(y_pred.cpu().detach().numpy(),axis=1),
+                                               np.argmax(targets.cpu().detach().numpy(),axis=1)))
+                print (f'predicted proportion: {nb_pos} - accuracy: {b_accuracy}')
+                if b_accuracy>0.75:
+                    good+=1
                 loss_save = loss.data.cpu().numpy().reshape(1,)[0]
-
                 if no_b in valid_list:
                     loss_dict['valid_losses_epoch'].append(loss_save)
                     print (f"Validation error {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
@@ -240,6 +257,10 @@ def main(argv=None):
         else:
             validation_scores = None
 
+        print (f'number correct examples: {good}')
+        if opt.model == 'allseq' or opt.model=='allseq_bin':
+            toprint = loss_dict['valid_losses_epoch']
+            print (f'validation loss matrix: {toprint}')
         monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
         monitoring.update_loss_dict(loss_dict, start=False)
         monitoring.save_loss(loss_dict,exp_dir)
@@ -260,6 +281,7 @@ def main(argv=None):
                            train_on_index=0)
     with open(f'{exp_dir}/evaluation_results.json', 'w') as json_file:
             json.dump(output, json_file)
+
 
 if __name__ == '__main__':
     main()

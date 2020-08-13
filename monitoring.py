@@ -40,8 +40,10 @@ def update_loss_dict(loss_dict, start = False):
 
     else:
         loss_dict['train_losses'].append(np.mean(loss_dict['train_losses_epoch']))
+        loss_dict['train_losses_epoch'] = []
         if 'valid_losses' in loss_dict:
             loss_dict['valid_losses'].append(np.mean(loss_dict['valid_losses_epoch']))
+            loss_dict['valid_losses_epoch'] = []
     return loss_dict
 
 def create_experiment_folder(opt):
@@ -147,6 +149,7 @@ def load_checkpoint(load_folder, opt, input_size, filename='checkpoint.pth.tar')
 
     # Get the optimizer
     optimizer = torch.optim.RMSprop(my_model.parameters(), lr=new_opt.lr, weight_decay=new_opt.weight_decay)
+    #optimizer = torch.optim.Adam(my_model.parameters(), lr=new_opt.lr, weight_decay=new_opt.weight_decay)
     if optimizer_state is not None:
         optimizer.load_state_dict(optimizer_state)
 
