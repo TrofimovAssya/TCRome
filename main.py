@@ -35,7 +35,7 @@ def build_parser():
     parser.add_argument('--tcr-size', default=27,type=int, help='length of the TCR sequence')
     parser.add_argument('--hla-size', default=34,type=int, help='length of the HLA sequence')
     parser.add_argument('--nb-kmer', default=1000,type=int, help='nb of different kmers')
-    parser.add_argument('--cache', default=0,type=int, help='cache prefix for the dataset')
+    parser.add_argument('--cache', default=0, help='cache prefix for the dataset')
     parser.add_argument('--nb-tcr-to-sample', default=10000,type=int, help='nb of TCR to sample')
     # Model specific options
     parser.add_argument('--tcr-conv-layers-sizes', default=[20,1,18], type=int, nargs='+', help='TCR-Conv net config.')

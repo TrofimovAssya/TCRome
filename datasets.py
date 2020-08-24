@@ -120,7 +120,7 @@ class BinaryTCRDataset(Dataset):
     def __init__(self,root_dir='.',save_dir='.', data_file='data.npy',
                  nb_tcr_to_sample = 10000, nb_patient = 10, cache='123abc'):
         self.root_dir = root_dir
-        self.cache = cache
+        self.cache = str(cache)
         data_path = os.path.join(root_dir, data_file)
         self.nb_patient = int(nb_patient)
         self.data = np.load(data_path)[:self.nb_patient]
@@ -140,7 +140,10 @@ class BinaryTCRDataset(Dataset):
             tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
             ### only keeping a certain number of TCR (the most abundant)
             ### TODO: this could be changed eventually
-            tcr = tcr[:self.nb_tcr_to_sample]
+            if 'bottom' in self.cache:
+                tcr = tcr[-self.nb_tcr_to_sample:]
+            else:
+                tcr = tcr[:self.nb_tcr_to_sample]
             #tcr/=np.max(tcr)
             np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
         else:
@@ -148,7 +151,10 @@ class BinaryTCRDataset(Dataset):
 
         if not f'{self.cache}_{idx_n}_tcr_gd.npy' in fnames:
             tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
-            tcr_n = tcr_n[:self.nb_tcr_to_sample]
+            if 'bottom' in self.cache:
+                tcr_n = tcr_n[-self.nb_tcr_to_sample:]
+            else:
+                tcr_n = tcr_n[:self.nb_tcr_to_sample]
             #tcr_n/=np.max(tcr_n)
             np.save(f'cached_dataset/{self.cache}_{idx_n}_tcr_gd.npy',tcr_n)
         else:
