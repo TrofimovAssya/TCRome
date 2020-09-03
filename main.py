@@ -28,7 +28,7 @@ def build_parser():
     ### Dataset specific options
     parser.add_argument('--data-dir', default='./data/', help='The folder contaning the dataset.')
     parser.add_argument('--data-file', default='.', help='The data file with the dataset.')
-    parser.add_argument('--dataset', choices=['tcr','hla_tcr',
+    parser.add_argument('--dataset', choices=['tcr','hla_tcr','binary_rand',
                                               'binary_hla_tcr'], default='tcr', help='Which dataset to use.')
     parser.add_argument('--transform', default=True,help='log10(exp+1)')
     parser.add_argument('--nb-patient', default=5,type=int, help='nb of different patients')

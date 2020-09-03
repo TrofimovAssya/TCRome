@@ -189,6 +189,105 @@ class BinaryTCRDataset(Dataset):
         return info
 
 
+class BinaryTCRDatasetLargeRandom(Dataset):
+
+    """Binary TCR presence dataset
+    Modification: train a certain number of samples with max TCR
+    Train the rest with a random number of TCRs
+    Contains negative/positive examples.
+    Negative examples are real TCR taken from individuals
+    that do not share HLA alleles with the current individual.
+
+    The dataset caches files to avoid re-loading and reconstructing
+    """
+
+    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy',
+                 nb_tcr_to_sample = 10000, nb_patient = 10, cache='123abc'):
+        self.root_dir = root_dir
+        self.cache = str(cache)
+        self.cache = f'{self.cache}_randomlarge'
+        data_path = os.path.join(root_dir, data_file)
+        self.nb_patient = int(nb_patient)
+        self.data = np.load(data_path)[:self.nb_patient]
+        self.nb_kmer = 10
+        self.nb_tcr_to_sample = int(nb_tcr_to_sample)
+        print (self.nb_kmer)
+        print (self.nb_patient)
+        if 'oh' in self.cache:
+            self.prefix='oh'
+        else:
+            self.prefix='gd'
+        #if test:
+        #    self.cache = f'bottom{self.cache}'
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        if idx%10==0:
+            maxkeep=True
+        else:
+            maxkeep=False
+
+        idx = self.data[idx]
+        idx, idx_n = idx[0], idx[1]
+        fnames = os.listdir('cached_dataset')
+        if not f'{self.cache}_{idx}_tcr_{self.prefix}.npy' in fnames:
+            tcr = np.load(f'{self.root_dir}/{idx}_tcr_{self.prefix}.npy')
+            ### only keeping a certain number of TCR (the most abundant)
+            ### TODO: this could be changed eventually
+            if 'bottom' in self.cache:
+                tcr = tcr[-self.nb_tcr_to_sample:]
+            elif maxkeep:
+                tcr = tcr[:125000]
+            else:
+                keeprand = np.random.permutation(np.arange(tcr.shape[0]))[:self.nb_tcr_to_sample]
+                tcr = tcr[keeprand]
+            #tcr/=np.max(tcr)
+            np.save(f'cached_dataset/{self.cache}_{idx}_tcr_{self.prefix}.npy',tcr)
+        else:
+            tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_{self.prefix}.npy')
+
+        if not f'{self.cache}_{idx_n}_tcr_{self.prefix}.npy' in fnames:
+            tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_{self.prefix}.npy')
+            if 'bottom' in self.cache:
+                tcr_n = tcr_n[-self.nb_tcr_to_sample:]
+            elif maxkeep:
+                tcr_n = tcr_n[:125000]
+            else:
+                keeprand = np.random.permutation(np.arange(tcr_n.shape[0]))[:self.nb_tcr_to_sample]
+                tcr_n = tcr_n[keeprand]
+            #tcr_n/=np.max(tcr_n)
+            np.save(f'cached_dataset/{self.cache}_{idx_n}_tcr_{self.prefix}.npy',tcr_n)
+        else:
+            tcr_n = np.load(f'cached_dataset/{self.cache}_{idx_n}_tcr_{self.prefix}.npy')
+        h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
+        #h1/=np.max(h1)
+        h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
+        #h2/=np.max(h2)
+        h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
+        #h3/=np.max(h3)
+        h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
+        #h4/=np.max(h4)
+        ### stacking the negative and the positive examples. 
+        ### The label will be created later 
+        tcr_total = np.vstack((tcr,tcr_n))
+        sample = [tcr_total,h1,h2,h3,h4]
+
+        return sample
+
+    def input_size(self):
+        ### possibly deprecated
+        ### TODO: check if this is still needed!
+        return self.nb_patient, self.nb_kmer
+
+    def extra_info(self):
+        ### possibly deprecated
+        ### TODO: check if this is still needed!
+        info = OrderedDict()
+        return info
+
+
 class TestBinaryTCRDataset(Dataset):
 
     """Test Binary TCR presence dataset
@@ -212,6 +311,10 @@ class TestBinaryTCRDataset(Dataset):
         self.tenth = tenth
         print (self.nb_kmer)
         print (self.nb_patient)
+        if 'oh' in self.cache:
+            self.prefix='oh'
+        else:
+            self.prefix='gd'
 
 
     def __len__(self):
@@ -222,12 +325,12 @@ class TestBinaryTCRDataset(Dataset):
         idx, idx_n = idx[0], idx[1]
 
 
-        tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
+        tcr = np.load(f'{self.root_dir}/{idx}_tcr_{self.prefix}.npy')
         step = int(tcr.shape[0]/10)
         start = step*self.tenth
         tcr = tcr[start:start+self.nb_tcr_to_sample]
 
-        tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_gd.npy')
+        tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_{self.prefix}.npy')
         step = int(tcr_n.shape[0]/10)
         start = step*self.tenth
         tcr_n = tcr_n[start:start+self.nb_tcr_to_sample]
@@ -288,6 +391,13 @@ def get_dataset(opt, exp_dir, test=False, tenth=0):
                                    nb_tcr_to_sample = opt.nb_tcr_to_sample,
                                    nb_patient = opt.nb_patient,
                                    cache = opt.cache, tenth=tenth)
+    elif opt.dataset == 'binary_rand':
+        dataset = BinaryTCRDatasetLargeRandom(root_dir=opt.data_dir,
+                                   save_dir =exp_dir,data_file = opt.data_file,
+                                   nb_tcr_to_sample = opt.nb_tcr_to_sample,
+                                   nb_patient = opt.nb_patient,
+                                   cache = opt.cache)
+
 
 
     else:
