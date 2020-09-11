@@ -124,6 +124,7 @@ def load_checkpoint(load_folder, opt, input_size, filename='checkpoint.pth.tar')
 
             # Loading the options
             new_opt = checkpoint['opt']
+            new_opt.gpu_selection=opt.gpu_selection
             print(f"Loading the model with these parameters: {new_opt}")
 
             # Loading the state

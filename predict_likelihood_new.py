@@ -139,7 +139,7 @@ def main(argv=None):
     print ("Getting the likelihood")
     os.mkdir(f'{exp_dir}/tenth{tenth}_preds_100/')
     #monitoring and predictions
-    for t in range(epoch, opt.epoch):
+    for t in range(1):
         loss_dict = monitoring.update_loss_dict(loss_dict,start = True)
         if opt.model == 'allseq_bin':
             good = 0
@@ -186,8 +186,6 @@ def main(argv=None):
                     print (f"Doing epoch {t},examples{no_b}/{len(dataset)}")
 
 
-
-        print ("Saving the model...")
 
 if __name__ == '__main__':
     main()
