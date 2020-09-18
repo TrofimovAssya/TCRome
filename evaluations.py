@@ -29,11 +29,16 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
 
     ### evaluating the j gene classification from the embedding space
 
-    acc, results = evaluate_jgene_bypatient(tcr_rep_dir,
+    #acc, results = evaluate_jgene_bypatient(tcr_rep_dir,
+    #                                        patient_to_index,original_data_dir,
+    #                                        opt.cache, exp_dir,
+    #                                        nb_patients = nb_patients, on_umap=on_umap,
+    #                                        train_on_index = 0)
+    acc, results = evaluate_jgene_mix(tcr_rep_dir,
                                             patient_to_index,original_data_dir,
                                             opt.cache, exp_dir,
-                                            nb_patients = nb_patients, on_umap=on_umap,
-                                            train_on_index = 0)
+                                            nb_patients = nb_patients, on_umap=on_umap)
+
 
     if on_umap:
         to_json['tcr_knn_emb'] = float(acc[0])
@@ -169,6 +174,57 @@ def get_seq_set(cache, pt_file_index, tcr_embs, original_file):
     seq_set = seq_set.drop_duplicates()
     return seq_set, emb_col
 
+def evaluate_jgene_mix(tcr_rep_dir,
+                      patient_to_index,
+                      original_data_dir,
+                      cache,
+                      exp_dir,
+                      nb_patients = 15,
+                      on_umap=False):
+    ### This evaluation scheme uses a fixed set of 15 patients to provide TCR
+    ##that must be classified
+    tcr_rep_files = os.listdir(tcr_rep_dir)[:nb_patients]
+    patient_to_index = pd.read_csv(patient_to_index, header=None)
+
+    print (f'optimizing knn for the chosen patient:{tcr_rep_files[train_on_index]}')
+    tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_files[0]}')
+    pt_file_index = get_pt_file_ix(tcr_rep_files[train_on_index])
+    original_file, data_file = load_original(patient_to_index, pt_file_index,
+                                             original_data_dir)
+    seq_set, emb_col = get_seq_set(cache, pt_file_index, tcr_embs, original_file)
+
+
+    labels = np.array(seq_set['j_gene'])
+    tcr_embs = np.array(seq_set[emb_col])
+
+    for patient in tcr_rep_files[1:]:
+        print (f'Doing patient {tcr_rep_files.index(patient)}/{len(tcr_rep_files)}')
+
+        tcr_embs = np.load(f'{tcr_rep_dir}/{patient}')
+        pt_file_index = get_pt_file_ix(patient)
+        original_file, data_file = load_original(patient_to_index, pt_file_index,
+                                             original_data_dir)
+        seq_set, emb_col = get_seq_set(cache, pt_file_index, tcr_embs, original_file)
+
+
+        labels = np.hstack((labels,np.array(seq_set['j_gene'])))
+        tcr_embs = np.vstack((tcr_embs,np.array(seq_set[emb_col])))
+
+
+    perf = []
+    for shuffle in range(NB_SHUFFLES):
+        permuted_indices = np.random.permutation(np.arange(tcr_embs.shape[0]))
+        train_cutoff = int(permuted_indices.shape[0]*0.85)
+        train_ix = permuted_indices[:train_cutoff]
+        test_ix = permuted_indices[train_cutoff:]
+
+        clf = get_knn(tcr_embs[train_ix], labels[train_ix], optimize_k=True, return_model=True)
+        sc = clf.score(tcr_embs[test_ix], labelsi[test_ix])
+        print (f'KNN score: {sc}')
+        perf.append(sc)
+    result = np.mean(perf)
+    return perf, result
+
 
 
 def evaluate_jgene_bypatient(tcr_rep_dir,
@@ -204,6 +260,7 @@ def evaluate_jgene_bypatient(tcr_rep_dir,
         seq_set['UMAP_2'] = tcr_embs1[:,1]
 
         clf1 = get_knn(tcr_embs1, labels, optimize_k=True, return_model=True)
+
 
     clf = get_knn(tcr_embs, labels, optimize_k=True, return_model=True)
     seq_set.to_csv(f'{exp_dir}/umap_fe_vizualisation.csv')
