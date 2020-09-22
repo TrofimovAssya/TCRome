@@ -57,7 +57,7 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
         to_json['tcr_knn_emb_scores'] = list(acc)
         to_json['tcr_knn_emb'] = np.mean(results)
 
-    if not validation_scores==None:
+    if not np.all(validation_scores==None):
         to_json['valid'] = float(np.mean(validation_scores))
 
     return to_json
