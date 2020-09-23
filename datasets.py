@@ -300,12 +300,15 @@ class TestBinaryTCRDataset(Dataset):
 
     def __init__(self,root_dir='.',save_dir='.', data_file='data.npy',
                  nb_tcr_to_sample = 10000, nb_patient = 10, cache='123abc',
-                 tenth = 0):
+                 tenth = 0, group='test'):
         self.root_dir = root_dir
         self.cache = str(cache)
         data_path = os.path.join(root_dir, data_file)
         self.nb_patient = int(nb_patient)
-        self.data = np.load(data_path)[self.nb_patient:self.nb_patient+4]
+        if group == 'test':
+            self.data = np.load(data_path)[self.nb_patient:self.nb_patient+4]
+        else:
+            self.data = np.load(data_path)[:5]
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
         self.tenth = tenth
@@ -478,7 +481,13 @@ def get_dataset(opt, exp_dir, test=False, tenth=0):
                                    save_dir =exp_dir,data_file = opt.data_file,
                                    nb_tcr_to_sample = opt.nb_tcr_to_sample,
                                    nb_patient = opt.nb_patient,
-                                   cache = opt.cache, tenth=tenth)
+                                   cache = opt.cache, tenth=tenth, group='test')
+    elif opt.dataset == 'binary_same':
+        dataset = TestBinaryTCRDataset(root_dir=opt.data_dir,
+                                   save_dir =exp_dir,data_file = opt.data_file,
+                                   nb_tcr_to_sample = opt.nb_tcr_to_sample,
+                                   nb_patient = opt.nb_patient,
+                                   cache = opt.cache, tenth=tenth, group='same')
     elif opt.dataset == 'binary_rand':
         dataset = BinaryTCRDatasetLargeRandom(root_dir=opt.data_dir,
                                    save_dir =exp_dir,data_file = opt.data_file,

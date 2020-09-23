@@ -28,9 +28,9 @@ def build_parser():
     ### Dataset specific options
     parser.add_argument('--data-dir', default='./data/', help='The folder contaning the dataset.')
     parser.add_argument('--data-file', default='.', help='The data file with the dataset.')
-    parser.add_argument('--dataset',
-                        choices=['tcr','hla_tcr','binary_rand','binary_small',
+    parser.add_argument('--dataset', choices=['tcr','hla_tcr',
                                               'binary_hla_tcr'], default='tcr', help='Which dataset to use.')
+    parser.add_argument('--tenth', default=0, type=int, help='test set only - fraction')
     parser.add_argument('--transform', default=True,help='log10(exp+1)')
     parser.add_argument('--nb-patient', default=5,type=int, help='nb of different patients')
     parser.add_argument('--tcr-size', default=27,type=int, help='length of the TCR sequence')
@@ -92,7 +92,9 @@ def main(argv=None):
     if not 'cached_dataset' in os.listdir('.'):
         os.mkdir('cached_dataset')
 
-    dataset = datasets.get_dataset(opt,exp_dir)
+    opt.dataset = 'binary_same'
+    tenth=opt.tenth
+    dataset = datasets.get_dataset(opt,exp_dir,tenth=opt.tenth)
 
     # Creating a model
     print ("Getting the model...")
@@ -134,9 +136,10 @@ def main(argv=None):
 
 
     # The training.
-    print ("Start training.")
+    print ("Getting the likelihood")
+    os.mkdir(f'{exp_dir}/tenth{tenth}_preds_100/')
     #monitoring and predictions
-    for t in range(epoch, opt.epoch):
+    for t in range(1):
         loss_dict = monitoring.update_loss_dict(loss_dict,start = True)
         if opt.model == 'allseq_bin':
             good = 0
@@ -147,24 +150,13 @@ def main(argv=None):
             if opt.model == 'TCRonly':
 
                 y_pred, my_model, targets = training.TCRonly_batch(mini,opt,my_model)
-
-                loss = criterion(y_pred, targets)
-                loss_save = loss.data.cpu().numpy().reshape(1,)[0]
-                loss_dict['train_losses_epoch'].append(loss_save)
+                np.save(f'{exp_dir}/preds_100/likelihood_batch{no_b}.npy',y_pred.data.cpu().numpy())
 
                 if no_b % 5 == 0:
-                    print (f"Doing epoch{t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
+                    print (f"Doing epoch{t},examples{no_b}/{len(dataset)}")
 
                 # Saving the emb
-                np.save(os.path.join(exp_dir, 'pixel_epoch_{}'.format(t)),my_model.emb_1.weight.cpu().data.numpy())
 
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                kmerembs = my_model.get_embeddings(inputs_k, inputs_s)[0].squeeze()
-                np.save(f'{exp_dir}/kmer_embs/kmer_embs_batch_{no_b}',kmerembs.cpu().data.numpy())
 
             elif opt.model == 'allseq':
 
@@ -172,38 +164,13 @@ def main(argv=None):
                 y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
                                   inputs_h4).float()
 
-                loss = criterion(y_pred, targets)
-                loss_save = loss.data.cpu().numpy().reshape(1,)[0]
-                if no_b in valid_list:
-
-                    loss_dict['valid_losses_epoch'].append(loss_save)
-                    print (f"Validation error {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
-
-                elif no_b % 5 == 0:
-                    loss_dict['train_losses_epoch'].append(loss_save)
-                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-
+                np.save(f'{exp_dir}/preds_100/likelihood_batch{no_b}.npy',y_pred.data.cpu().numpy())
                 batch_number = dataset.dataset.data[no_b]
-                kmerembs = my_model.get_embeddings(inputs_k, inputs_h1,
-                                                   inputs_h2, inputs_h3,
-                                                   inputs_h4)
-                kmerembs1 = kmerembs[0].squeeze()
                 bn = batch_number[0]
-                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
+                np.save(f'{exp_dir}/preds_100/likelihood_batch{bn}.npy',y_pred.data.cpu().numpy())
 
-                for i in range(4):
-                    kmerembs1 = kmerembs[i+1].squeeze()
-                    kmerembs1 = kmerembs1[0]
-                    np.save(f'{exp_dir}/hla_embs/hla_embs_batch_{bn}_h{i+1}',kmerembs1.cpu().data.numpy())
-
-
-                kmerembs1 = my_model.hla_representation
-                kmerembs1 = kmerembs1[0].squeeze()
-                np.save(f'{exp_dir}/hla_embs/ppl_embs_batch_{bn}',kmerembs1.cpu().data.numpy())
-
+                if no_b % 5 == 0:
+                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}")
 
 
 
@@ -212,77 +179,12 @@ def main(argv=None):
                 inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4, targets = training.binallseq_batch(mini,opt)
                 y_pred = my_model(inputs_k,inputs_h1, inputs_h2, inputs_h3,
                                   inputs_h4).float()
-
-                loss = criterion(y_pred, targets)
-                nb_pos = (np.sum(np.argmax(y_pred.cpu().detach().numpy(),axis=1))/y_pred.shape[0])
-                b_accuracy = (estimate_batch_accuracy(np.argmax(y_pred.cpu().detach().numpy(),axis=1),
-                                               np.argmax(targets.cpu().detach().numpy(),axis=1)))
-                print (f'predicted proportion: {nb_pos} - accuracy: {b_accuracy}')
-                if b_accuracy>0.75:
-                    good+=1
-                loss_save = loss.data.cpu().numpy().reshape(1,)[0]
-                if no_b in valid_list:
-                    loss_dict['valid_losses_epoch'].append(loss_save)
-                    print (f"Validation error {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
-
-                elif no_b % 5 == 0:
-                    loss_dict['train_losses_epoch'].append(loss_save)
-                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
-
                 batch_number = dataset.dataset.data[no_b]
-                kmerembs = my_model.get_embeddings(inputs_k, inputs_h1,
-                                                   inputs_h2, inputs_h3,
-                                                   inputs_h4)
-                kmerembs1 = kmerembs[0].squeeze()
                 bn = batch_number[0]
-                true_size = int(kmerembs1.shape[0]/2)
-                np.save(f'{exp_dir}/tcr_embs/tcr_embs_batch_{bn}',kmerembs1.cpu().data.numpy()[:true_size])
+                np.save(f'{exp_dir}/sametenth{tenth}_preds_100/likelihood_batch{bn}.npy',y_pred.data.cpu().numpy())
+                if no_b % 5 == 0:
+                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}")
 
-                for i in range(4):
-                    kmerembs1 = kmerembs[i+1].squeeze()
-                    kmerembs1 = kmerembs1[0]
-                    np.save(f'{exp_dir}/hla_embs/hla_embs_batch_{bn}_h{i+1}',kmerembs1.cpu().data.numpy()[:true_size])
-
-
-                kmerembs1 = my_model.hla_representation
-                kmerembs1 = kmerembs1[0].squeeze()
-                np.save(f'{exp_dir}/hla_embs/ppl_embs_batch_{bn}',kmerembs1.cpu().data.numpy()[:true_size])
-
-
-        print ("Saving the model...")
-        if opt.model=='allseq_bin' or opt.model=='allseq':
-            validation_scores = loss_dict['valid_losses_epoch']
-        else:
-            validation_scores = None
-
-        print (f'number correct examples: {good}')
-        if opt.model == 'allseq' or opt.model=='allseq_bin':
-            toprint = loss_dict['valid_losses_epoch']
-            print (f'validation loss matrix: {toprint}')
-        monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
-        monitoring.update_loss_dict(loss_dict, start=False)
-        monitoring.save_loss(loss_dict,exp_dir)
-        if t % opt.plot_frequency==0:
-            monitoring.plot_training_curve(exp_dir, loss_dict)
-
-
-
-    print ('Finished training! Starting evaluations')
-    tcr_rep_dir = f'{exp_dir}/tcr_embs'
-    patient_to_index = f'data/hla_for_model_eval/pt_names.csv'
-    original_data_dir = f'/u/trofimov/Emerson/original'
-
-    nb_patients = 15
-
-    validation_scores = np.load(f'{exp_dir}/validation_loss.npy')
-    output = evaluations.evaluate_model(opt, my_model ,exp_dir, tcr_rep_dir, patient_to_index, 
-                          original_data_dir, validation_scores, nb_patients,
-                           train_on_index=0)
-    with open(f'{exp_dir}/evaluation_results.json', 'w') as json_file:
-            json.dump(output, json_file)
 
 
 if __name__ == '__main__':
