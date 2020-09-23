@@ -274,6 +274,7 @@ def main(argv=None):
     tcr_rep_dir = f'{exp_dir}/tcr_embs'
     patient_to_index = f'data/hla_for_model_eval/pt_names.csv'
     original_data_dir = f'/u/trofimov/Emerson/original'
+    validation_scores = np.load(f'{exp_dir}/validation_loss.npy')
 
     nb_patients = 15
 

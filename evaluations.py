@@ -18,7 +18,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
                    original_data_dir, validation_scores = None, nb_patients=15, train_on_index = 0,
-                   on_umap=True):
+                   on_umap=False):
 
     ### calculating the performance for various tasks of the trained model
     ### MHC cluster correlation
@@ -34,12 +34,19 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
     #                                        opt.cache, exp_dir,
     #                                        nb_patients = nb_patients, on_umap=on_umap,
     #                                        train_on_index = 0)
-    acc, results = evaluate_jgene_mix(tcr_rep_dir,
+    acc, results, tcr_embs, labels = evaluate_jgene_mix(tcr_rep_dir,
                                             patient_to_index,original_data_dir,
                                             opt.cache, exp_dir,
                                             nb_patients = nb_patients, on_umap=on_umap)
 
 
+    umap_embs = get_umap(tcr_embs)
+    umap_embs = pd.DataFrame(umap_embs)
+    umap_embs['j_gene'] = labels
+    umap_embs.to_csv(f'{exp_dir}/umap_15samples.csv')
+    tcr_embs = pd.DataFrame(tcr_embs)
+    tcr_embs['j_gene'] = labels
+    tcr_embs.to_csv(f'{exp_dir}/tcr_embs_15samples.csv')
     if on_umap:
         to_json['tcr_knn_emb'] = float(acc[0])
         to_json['tcr_knn_umap'] = float(acc[1])
@@ -47,11 +54,10 @@ def evaluate_model(opt, model, exp_dir, tcr_rep_dir, patient_to_index,
         to_json['tcr_knn_emb_scores'] = list(results[0]['accuracy'])
         to_json['tcr_knn_patient_names'] = list(results[0]['patient_names'])
     else:
-        to_json['tcr_knn_emb'] = float(acc)
-        to_json['tcr_knn_emb_scores'] = list(results['accuracy'])
-        to_json['tcr_knn_patient_names'] = list(results['patient_names'])
+        to_json['tcr_knn_emb_scores'] = list(acc)
+        to_json['tcr_knn_emb'] = np.mean(results)
 
-    if not validation_scores==None:
+    if not np.all(validation_scores==None):
         to_json['valid'] = float(np.mean(validation_scores))
 
     return to_json
@@ -183,12 +189,13 @@ def evaluate_jgene_mix(tcr_rep_dir,
                       on_umap=False):
     ### This evaluation scheme uses a fixed set of 15 patients to provide TCR
     ##that must be classified
+    NB_SHUFFLES = 10
     tcr_rep_files = os.listdir(tcr_rep_dir)[:nb_patients]
     patient_to_index = pd.read_csv(patient_to_index, header=None)
 
-    print (f'optimizing knn for the chosen patient:{tcr_rep_files[train_on_index]}')
+    print (f'optimizing knn for the chosen patient:{tcr_rep_files[0]}')
     tcr_embs = np.load(f'{tcr_rep_dir}/{tcr_rep_files[0]}')
-    pt_file_index = get_pt_file_ix(tcr_rep_files[train_on_index])
+    pt_file_index = get_pt_file_ix(tcr_rep_files[0])
     original_file, data_file = load_original(patient_to_index, pt_file_index,
                                              original_data_dir)
     seq_set, emb_col = get_seq_set(cache, pt_file_index, tcr_embs, original_file)
@@ -200,11 +207,11 @@ def evaluate_jgene_mix(tcr_rep_dir,
     for patient in tcr_rep_files[1:]:
         print (f'Doing patient {tcr_rep_files.index(patient)}/{len(tcr_rep_files)}')
 
-        tcr_embs = np.load(f'{tcr_rep_dir}/{patient}')
+        ntcr_embs = np.load(f'{tcr_rep_dir}/{patient}')
         pt_file_index = get_pt_file_ix(patient)
         original_file, data_file = load_original(patient_to_index, pt_file_index,
                                              original_data_dir)
-        seq_set, emb_col = get_seq_set(cache, pt_file_index, tcr_embs, original_file)
+        seq_set, emb_col = get_seq_set(cache, pt_file_index, ntcr_embs, original_file)
 
 
         labels = np.hstack((labels,np.array(seq_set['j_gene'])))
@@ -219,11 +226,11 @@ def evaluate_jgene_mix(tcr_rep_dir,
         test_ix = permuted_indices[train_cutoff:]
 
         clf = get_knn(tcr_embs[train_ix], labels[train_ix], optimize_k=True, return_model=True)
-        sc = clf.score(tcr_embs[test_ix], labelsi[test_ix])
+        sc = clf.score(tcr_embs[test_ix], labels[test_ix])
         print (f'KNN score: {sc}')
         perf.append(sc)
     result = np.mean(perf)
-    return perf, result
+    return perf, result, tcr_embs, labels
 
 
 
@@ -317,6 +324,7 @@ def evaluate_jgene_staticset(seqset,
 
 
 def get_umap(emb):
+
     reducer = umap.UMAP(verbose=1)
     emb = reducer.fit_transform(emb)
     return emb
