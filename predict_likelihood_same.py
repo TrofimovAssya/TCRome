@@ -137,7 +137,7 @@ def main(argv=None):
 
     # The training.
     print ("Getting the likelihood")
-    os.mkdir(f'{exp_dir}/tenth{tenth}_preds_100/')
+    os.mkdir(f'{exp_dir}/sametenth{tenth}_preds_100/')
     #monitoring and predictions
     for t in range(1):
         loss_dict = monitoring.update_loss_dict(loss_dict,start = True)
