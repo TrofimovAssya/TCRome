@@ -239,7 +239,7 @@ class BinaryTCRDatasetLargeRandom(Dataset):
             if 'bottom' in self.cache:
                 tcr = tcr[-self.nb_tcr_to_sample:]
             elif maxkeep:
-                tcr = tcr[:125000]
+                tcr = tcr[:100000]
             else:
                 keeprand = np.random.permutation(np.arange(tcr.shape[0]))[:self.nb_tcr_to_sample]
                 tcr = tcr[keeprand]
@@ -307,8 +307,10 @@ class TestBinaryTCRDataset(Dataset):
         self.nb_patient = int(nb_patient)
         if group == 'test':
             self.data = np.load(data_path)[self.nb_patient:self.nb_patient+4]
-        else:
+        elif group == 'same':
             self.data = np.load(data_path)[:5]
+        elif group == 'thome':
+            self.data = np.load(data_path)
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
         self.tenth = tenth
@@ -488,6 +490,12 @@ def get_dataset(opt, exp_dir, test=False, tenth=0):
                                    nb_tcr_to_sample = opt.nb_tcr_to_sample,
                                    nb_patient = opt.nb_patient,
                                    cache = opt.cache, tenth=tenth, group='same')
+    elif opt.dataset == 'binary_thome':
+        dataset = TestBinaryTCRDataset(root_dir=opt.data_dir,
+                                   save_dir =exp_dir,data_file = opt.data_file,
+                                   nb_tcr_to_sample = opt.nb_tcr_to_sample,
+                                   nb_patient = opt.nb_patient,
+                                   cache = opt.cache, tenth=tenth, group='thome')
     elif opt.dataset == 'binary_rand':
         dataset = BinaryTCRDatasetLargeRandom(root_dir=opt.data_dir,
                                    save_dir =exp_dir,data_file = opt.data_file,
