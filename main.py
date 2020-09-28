@@ -225,9 +225,10 @@ def main(argv=None):
                     loss_dict['valid_losses_epoch'].append(loss_save)
                     print (f"Validation error {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
 
-                elif no_b % 5 == 0:
+                else:
                     loss_dict['train_losses_epoch'].append(loss_save)
-                    print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
+                    if no_b % 5 == 0:
+                        print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()

@@ -199,7 +199,6 @@ class AllSeqCNN(nn.Module):
 
         return mlp_output
 
-
 class AllSeqCNNbin(nn.Module):
     '''
     Similar to the AllSeqCNN model, except it operates on presence/absence of
@@ -318,15 +317,38 @@ class AllSeqCNNbin(nn.Module):
 
 
 
+class LogisticRegression(nn.Module):
+    '''
+    The logistic regression benchmark model for HLA and TCR
+    '''
+
+    def __init__(self,  data_dir ='.', nb_features = 602):
+        super(LogisticRegression, self).__init__()
+        self.nb_features = nb_features
+        self.linear = nn.Linear(self.nb_features,2)
+        self.softmax = nn.Softmax(dim=1)
+
+
+    def forward(self, x1):
+        lr_output = self.linear(x1)
+        lr_output = self.softmax(lr_output)
+
+        return lr_output
+
+
+
+
 def get_model(opt, inputs_size, model_state=None):
 
     """
-    There are 3 available models so far.
+    There are 4 available models so far.
     TCRonly - the vanilla model defined in the TLT paper
     allseq - the model that replaces the patient index in the vanilla by a set of
     HLA sequences
     allseqbin - the model that replaces the label for a presence/absence of TCR and
     adds negative examples.
+    LogisticRegression - a logistic regression model that is used as a
+    benchmark
     """
 
     if opt.model == 'TCRonly' or opt.model=='RNN':
@@ -348,6 +370,11 @@ def get_model(opt, inputs_size, model_state=None):
             hla_conv_layers_sizes = opt.hla_conv_layers_sizes, mlp_layers_size = opt.mlp_layers_size,
             tcr_input_size = opt.tcr_size, hla_input_size = opt.hla_size, 
             nb_samples=inputs_size[0], emb_size=opt.emb_size, data_dir =opt.data_dir)
+
+    elif opt.model=='logreg_benchmark':
+        model_class = LogisticRegression
+        model = model_class(data_dir = opt.data_dir)
+
 
     else:
         raise NotImplementedError()

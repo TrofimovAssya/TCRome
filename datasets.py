@@ -454,22 +454,107 @@ class BinaryTCRDatasetSmallFull(Dataset):
         info = OrderedDict()
         return info
 
+class SimpleModelDatset(Dataset):
+    """
+    This dataset is for the logistic regression benchmarking model
+    """
+
+    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy',
+                 nb_tcr_to_sample = 10000, nb_patient = 10, cache='123abc'):
+        self.root_dir = root_dir
+        self.cache = str(cache)
+        self.cache = f'{self.cache}_lr_simple'
+        data_path = os.path.join(root_dir, data_file)
+        self.nb_patient = int(nb_patient)
+        self.data = np.load(data_path)[:self.nb_patient]
+        self.nb_kmer = 10
+        self.nb_tcr_to_sample = int(nb_tcr_to_sample)
+        print (self.nb_kmer)
+        print (self.nb_patient)
+        if 'oh' in self.cache:
+            self.prefix='oh'
+        else:
+            self.prefix='gd'
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+
+        idx = self.data[idx]
+        idx, idx_n = idx[0], idx[1]
+        fnames = os.listdir('cached_dataset')
+        if not f'{self.cache}_{idx}_tcr_{self.prefix}.npy' in fnames:
+            tcr = np.load(f'{self.root_dir}/{idx}_tcr_{self.prefix}.npy')
+            ### only keeping a certain number of TCR (the most abundant)
+            ### TODO: this could be changed eventually
+            if 'bottom' in self.cache:
+                tcr = tcr[-self.nb_tcr_to_sample:]
+            else:
+                tcr = tcr[:self.nb_tcr_to_sample]
+
+            tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_{self.prefix}.npy')
+
+            if 'bottom' in self.cache:
+                tcr_n = tcr_n[-self.nb_tcr_to_sample:]
+            else:
+                tcr_n = tcr_n[:self.nb_tcr_to_sample]
+
+            h1 = np.load(f'{self.root_dir}/{idx}_onehot_hla.npy')
+            tcr_total = np.vstack((tcr,tcr_n))
+            tcr_total = tcr_total.reshape(tcr_total.shape[0], 27*20)
+            ### TODO: make this better using broadcasting?
+            h_new = np.zeros((tcr_total.shape[0], h1.shape[0]))
+            for i in range(h_new.shape[0]):
+                h_new[i,:] = h1
+            total_inputs = np.hstack((tcr_total,h_new))
+
+
+            np.save(f'cached_dataset/{self.cache}_{idx}_tcr_{self.prefix}.npy',total_inputs)
+        else:
+            total_inputs = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_{self.prefix}.npy')
+
+        size = int(total_inputs.shape[0]/2)
+        targets = np.zeros((total_inputs.shape[0], 2))
+        targets[:size,1]+=1
+        targets[size:,0]+=1
+        return total_inputs, targets
+
+    def input_size(self):
+        ### possibly deprecated
+        ### TODO: check if this is still needed!
+        return self.nb_patient, self.nb_kmer
+
+    def extra_info(self):
+        ### possibly deprecated
+        ### TODO: check if this is still needed!
+        info = OrderedDict()
+        return info
 
 
 
 def get_dataset(opt, exp_dir, test=False, tenth=0):
 
     """
-    Three datasets are implemented
+    Four datasets are implemented
     TCRDataset - the vanilla dataset [sample index, sequence] [abundance]
     TCRHLADataset - [hla1, hla2, hla3, hla4, tcrseq] [abundance]
     BinaryTCRDataset - [hla1, hla2, hla3, hla4, tcrseq] [present/absent]
+    SimpleModelDataset - the dataset that is used for the simple model
+    comparison
 
     """
 
 
     if opt.dataset == 'tcr':
         dataset = TCRDataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file, nb_patient = opt.nb_patient, nb_kmer = opt.nb_kmer)
+
+    if opt.dataset == 'simple':
+        dataset = SimpleModelDatset(root_dir=opt.data_dir,
+                save_dir=exp_dir, data_file=opt.data_file,
+                 nb_tcr_to_sample = opt.nb_tcr_to_sample, 
+                 nb_patient = 500, cache=opt.cache)
+
     elif opt.dataset == 'hla_tcr':
         dataset = TCRHLADataset(root_dir=opt.data_dir, save_dir =exp_dir,data_file = opt.data_file)
     elif opt.dataset == 'binary_hla_tcr':
