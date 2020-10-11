@@ -53,6 +53,7 @@ def allseq_batch(mini, opt):
 
 def binallseq_batch(mini,opt):
     inputs_k, inputs_h1, inputs_h2, inputs_h3, inputs_h4 = mini[0], mini[1], mini[2], mini[3], mini[4]
+    sizes = mini[5]
 
     if inputs_h1.shape[1]>inputs_k.shape[1]:
         inputs_h1 = inputs_h1[:,:inputs_k.shape[1],:,:]
@@ -70,9 +71,12 @@ def binallseq_batch(mini,opt):
     inputs_h3 = Variable(inputs_h3, requires_grad=False).float()
     inputs_h4 = Variable(inputs_h3, requires_grad=False).float()
     targets = np.zeros((inputs_k.shape[1],2))
-    size = int(inputs_k.shape[1]/2)
-    targets[:size,1]+=1
-    targets[size:,0]+=1
+    #size = int(inputs_k.shape[1]/2)
+    #targets[:size,0]+=1
+    #targets[:size,1]+=1
+    targets[:sizes[0],0]+=1
+    targets[sizes[0]:,1]+=1
+    assert np.all(np.sum(targets,axis=0) == np.array(sizes))
     targets = torch.FloatTensor(targets)
     targets = Variable(targets,requires_grad=False).float()
 

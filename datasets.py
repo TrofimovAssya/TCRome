@@ -111,6 +111,7 @@ class BinaryTCRDataset(Dataset):
         tcr = np.load(f'cached_dataset/{idx_fname}')
         tcr_n = np.load(f'cached_dataset/{idx_n_fname}')
 
+        sizes = [tcr.shape[0], tcr_n.shape[0]]
         idx = int(idx)
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
@@ -119,7 +120,7 @@ class BinaryTCRDataset(Dataset):
         ### stacking the negative and the positive examples. 
         ### The label will be created later 
         tcr_total = np.vstack((tcr,tcr_n))
-        sample = [tcr_total,h1,h2,h3,h4]
+        sample = [tcr_total,h1,h2,h3,h4, sizes]
 
         return sample
 
