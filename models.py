@@ -354,7 +354,7 @@ def get_model(opt, inputs_size, model_state=None):
     if opt.model == 'TCRonly' or opt.model=='RNN':
         model_class = FactorizedCNN
         model = model_class(conv_layers_sizes = opt.conv_layers_sizes, 
-            mlp_layers_size = opt.mlp_layers_size, nb_samples=inputs_size[0], emb_size=opt.emb_size, 
+            mlp_layers_size = opt.mlp_layers_size, nb_samples=inputs_size, emb_size=opt.emb_size, 
             tcr_input_size = opt.tcr_input_size, data_dir =opt.data_dir)
 
     elif opt.model=='allseq':
@@ -362,14 +362,14 @@ def get_model(opt, inputs_size, model_state=None):
         model = model_class(tcr_conv_layers_sizes = opt.tcr_conv_layers_sizes, 
             hla_conv_layers_sizes = opt.hla_conv_layers_sizes, mlp_layers_size = opt.mlp_layers_size,
             tcr_input_size = opt.tcr_size, hla_input_size = opt.hla_size, 
-            nb_samples=inputs_size[0], emb_size=opt.emb_size, data_dir =opt.data_dir)
+            nb_samples=inputs_size, emb_size=opt.emb_size, data_dir =opt.data_dir)
 
     elif opt.model=='allseq_bin':
         model_class = AllSeqCNNbin
         model = model_class(tcr_conv_layers_sizes = opt.tcr_conv_layers_sizes, 
             hla_conv_layers_sizes = opt.hla_conv_layers_sizes, mlp_layers_size = opt.mlp_layers_size,
             tcr_input_size = opt.tcr_size, hla_input_size = opt.hla_size, 
-            nb_samples=inputs_size[0], emb_size=opt.emb_size, data_dir =opt.data_dir)
+            nb_samples=inputs_size, emb_size=opt.emb_size, data_dir =opt.data_dir)
 
     elif opt.model=='logreg_benchmark':
         model_class = LogisticRegression

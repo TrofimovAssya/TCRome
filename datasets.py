@@ -2,106 +2,9 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import os
 import pdb
+import pickle
 from collections import OrderedDict
 import pandas as pd
-
-
-class TCRDataset(Dataset):
-    """TCR abundance dataset
-    The dataset as defined in TLT paper
-    added the sampling of TCRs for better comparison with the other models.
-    """
-
-
-    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy', nb_patient = 5, nb_kmer = 1000):
-        self.root_dir = root_dir
-        data_path = os.path.join(root_dir, data_file)
-        self.data = pd.read_csv(data_path, header=None)
-        self.data = list(self.data[0])
-        self.nb_patient = nb_patient
-        self.nb_kmer = nb_kmer
-        print (self.nb_kmer)
-        print (self.nb_patient)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        idx = self.data[idx]
-        fnames = os.listdir('cached_dataset')
-        if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
-            tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
-            tcr = tcr[:self.nb_tcr_to_sample]
-            tcr/=np.max(tcr)
-            np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
-        else:
-            tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
-
-
-        sample = np.load(f'{self.root_dir}/{idx}_sample.npy')
-        label = np.load(f'{self.root_dir}/{idx}_freq_log10.npy')
-        sample = [sample, tcr, label]
-
-        return sample
-
-    def input_size(self):
-        return self.nb_patient, self.nb_kmer
-
-    def extra_info(self):
-        info = OrderedDict()
-        return info
-
-class TCRHLADataset(Dataset):
-    """ TCR-HLA dataset
-    Variation on the vanilla TCR dataset.
-    the patient ix is replaced with the patient's HLA. 
-    """
-
-    def __init__(self,root_dir='.',save_dir='.', data_file='data.npy'):
-        self.root_dir = root_dir
-        data_path = os.path.join(root_dir, data_file)
-        self.data = pd.read_csv(data_path, header=None)
-        self.data = list(self.data[0])
-        ### TODO: I think this is deprecated
-        self.nb_patient = 10
-        self.nb_kmer = 10
-        print (self.nb_kmer)
-        print (self.nb_patient)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        idx = self.data[idx]
-        fnames = os.listdir('cached_dataset')
-        if not f'{self.cache}_{idx}_tcr_gd.npy' in fnames:
-            tcr = np.load(f'{self.root_dir}/{idx}_tcr_gd.npy')
-            tcr = tcr[:self.nb_tcr_to_sample]
-            tcr/=np.max(tcr)
-            np.save(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy',tcr)
-        else:
-            tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_gd.npy')
-
-        h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
-        h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
-        h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
-        h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
-        label = np.load(f'{self.root_dir}/{idx}_freq_log10.npy')
-        ### to Z-scores? for better prediction?
-        ### TODO: add this as a parameter for the model
-        #label = (10**label-np.mean(10**label))/(np.std(10**label))
-        #label = (label-np.min(label))/(np.max(label)-np.min(label))
-        sample = [tcr,h1,h2,h3,h4, label]
-
-        return sample
-
-    ### TODO: the next 2 function are possibly deprecated
-    def input_size(self):
-        return self.nb_patient, self.nb_kmer
-
-    def extra_info(self):
-        info = OrderedDict()
-        return info
 
 
 class BinaryTCRDataset(Dataset):
@@ -118,58 +21,101 @@ class BinaryTCRDataset(Dataset):
                  nb_tcr_to_sample = 10000, nb_patient = 10, cache='123abc'):
         self.root_dir = root_dir
         self.cache = str(cache)
+        cached_files = os.listdir('cached_dataset')
         data_path = os.path.join(root_dir, data_file)
         self.nb_patient = int(nb_patient)
-        self.data = np.load(data_path)[:self.nb_patient]
-        self.nb_kmer = 10
+        self.data = np.load(data_path)
+        cutoffix = np.where(self.data[:,0]==500)[0][0]
+        self.data = self.data[:cutoffix]
+        print (f'Keeping the first {cutoffix} patients ')
+        self.old_data = np.load(data_path)
+        self.old_data = self.old_data[:cutoffix]
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
-        print (self.nb_kmer)
-        print (self.nb_patient)
+
+
+        ### Deciding if we are using the one-hot or gd dataset
         if 'oh' in self.cache:
             self.prefix='oh'
         else:
             self.prefix='gd'
-        #if test:
-        #    self.cache = f'bottom{self.cache}'
+
+        ### Checking if the dataset is cached already
+        if f'{self.cache}cached_list.npy' in cached_files:
+            print ('Found a cached dataset matching the cache ID!')
+            self.data = np.load(f'cached_dataset/{self.cache}cached_list.npy')
+            self.fnames_dict = pickle.load(open(f'cached_dataset/{self.cache}_fnamedict.p', 'rb'))
+            for ix in self.old_data[:,1]:
+                if not ix in self.fnames_dict:
+                    print (f'Doing additional patient {ix}')
+                    tcr = self.load_file(ix)
+                    this_fnames_list = self.save_into_batches(ix, tcr,
+                                                              self.nb_tcr_to_sample)
+                    self.fnames_dict[ix] = this_fnames_list
+        else:
+            print ('No cached dataset found...')
+            print ('Processing dataset...')
+            new_datalist = np.ones((1,2))
+            fnames_dict = {}
+            for x in range(self.data.shape[0]):
+                ix_all = self.data[x]
+                ix = ix_all[0]
+                print (f'Loading patient {ix} data...')
+                tcr = self.load_file(ix)
+                this_fnames_list = self.save_into_batches(ix, tcr, self.nb_tcr_to_sample)
+                ### adding the newly cached data  filenames to the dictionary
+                fnames_dict[ix] = this_fnames_list
+                #import pdb;pdb.set_trace()
+                new_datalist = np.vstack((new_datalist,
+                           np.tile(ix_all,len(this_fnames_list)).reshape(len(this_fnames_list),2)))
+            new_datalist = new_datalist[1:]
+            self.fnames_dict = fnames_dict
+
+            for ix in self.old_data[:,1]:
+                if not ix in self.fnames_dict:
+                    print (f'Doing additional patient {ix}')
+                    tcr = self.load_file(ix)
+                    this_fnames_list = self.save_into_batches(ix, tcr,
+                                                              self.nb_tcr_to_sample)
+                    fnames_dict[ix] = this_fnames_list
+
+            self.data = new_datalist
+            pickle.dump(self.fnames_dict,
+                        open(f'cached_dataset/{self.cache}_fnamedict.p', 'wb'))
+            np.save(f'cached_dataset/{self.cache}cached_list.npy', self.data)
+            print ('Finished loading and caching data!')
+        import pdb; pdb.set_trace()
+
 
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, idx):
-        idx = self.data[idx]
+    def __getitem__(self, ix):
+        ### The negative one should sample a random TCR batch from all the
+        ## corresponding negatives
+        ix = int(ix)
+        idx = self.data[ix]
+        ### getting the negative and positive examples
         idx, idx_n = idx[0], idx[1]
-        fnames = os.listdir('cached_dataset')
-        if not f'{self.cache}_{idx}_tcr_{self.prefix}.npy' in fnames:
-            tcr = np.load(f'{self.root_dir}/{idx}_tcr_{self.prefix}.npy')
-            ### only keeping a certain number of TCR (the most abundant)
-            ### TODO: this could be changed eventually
-            if 'bottom' in self.cache:
-                tcr = tcr[-self.nb_tcr_to_sample:]
-            else:
-                tcr = tcr[:self.nb_tcr_to_sample]
-            #tcr/=np.max(tcr)
-            np.save(f'cached_dataset/{self.cache}_{idx}_tcr_{self.prefix}.npy',tcr)
+        ### determining the batch number
+        start_ix = np.where(self.data[:,0]==idx)[0][0]
+        bnumber = ix-start_ix
+        ### determining the filenames for neg and po examples
+        idx_fname = self.fnames_dict[idx][bnumber]
+        idx_n = int(idx_n)
+        idx = int(idx)
+        if bnumber>(len(self.fnames_dict[idx_n])-1):
+            idx_n_fname = np.random.choice(self.fnames_dict[idx_n])
         else:
-            tcr = np.load(f'cached_dataset/{self.cache}_{idx}_tcr_{self.prefix}.npy')
+            idx_n_fname = self.fnames_dict[idx_n][bnumber]
 
-        if not f'{self.cache}_{idx_n}_tcr_{self.prefix}.npy' in fnames:
-            tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_{self.prefix}.npy')
-            if 'bottom' in self.cache:
-                tcr_n = tcr_n[-self.nb_tcr_to_sample:]
-            else:
-                tcr_n = tcr_n[:self.nb_tcr_to_sample]
-            #tcr_n/=np.max(tcr_n)
-            np.save(f'cached_dataset/{self.cache}_{idx_n}_tcr_{self.prefix}.npy',tcr_n)
-        else:
-            tcr_n = np.load(f'cached_dataset/{self.cache}_{idx_n}_tcr_{self.prefix}.npy')
+        tcr = np.load(f'cached_dataset/{idx_fname}')
+        tcr_n = np.load(f'cached_dataset/{idx_n_fname}')
+
+        idx = int(idx)
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
-        #h1/=np.max(h1)
         h2 = np.load(f'{self.root_dir}/{idx}_h2.npy')
-        #h2/=np.max(h2)
         h3 = np.load(f'{self.root_dir}/{idx}_h3.npy')
-        #h3/=np.max(h3)
         h4 = np.load(f'{self.root_dir}/{idx}_h4.npy')
-        #h4/=np.max(h4)
         ### stacking the negative and the positive examples. 
         ### The label will be created later 
         tcr_total = np.vstack((tcr,tcr_n))
@@ -177,10 +123,33 @@ class BinaryTCRDataset(Dataset):
 
         return sample
 
+    def load_file(self,ix):
+        tcr = np.load(f'{self.root_dir}/{ix}_tcr_{self.prefix}.npy')
+        tcr = tcr[np.random.permutation(np.arange(tcr.shape[0]))]
+        return tcr
+
+
+
+    def save_into_batches(self,ptix, tcr, bsize):
+        ### this function will split the whole TCRset for a patient into
+        ### batches of the same size and save them to file.
+        ### It will also return a list of cached filenames to load later.
+        count = 0
+        fname_list = []
+        for i in range(0,tcr.shape[0], bsize):
+            print (f'Processing batch {i}/{tcr.shape[0]}')
+            batch = tcr[i:i+bsize]
+            batch_fname = f'{self.cache}_{ptix}_tcr_{self.prefix}_b{count}.npy'
+            np.save(f'cached_dataset/{batch_fname}',batch)
+            count+=1
+            fname_list.append(batch_fname)
+        return fname_list
+
+
     def input_size(self):
         ### possibly deprecated
         ### TODO: check if this is still needed!
-        return self.nb_patient, self.nb_kmer
+        return self.nb_patient
 
     def extra_info(self):
         ### possibly deprecated
@@ -253,7 +222,7 @@ class BinaryTCRDatasetLargeRandom(Dataset):
             if 'bottom' in self.cache:
                 tcr_n = tcr_n[-self.nb_tcr_to_sample:]
             elif maxkeep:
-                tcr_n = tcr_n[:125000]
+                tcr_n = tcr_n[:100000]
             else:
                 keeprand = np.random.permutation(np.arange(tcr_n.shape[0]))[:self.nb_tcr_to_sample]
                 tcr_n = tcr_n[keeprand]
@@ -303,13 +272,14 @@ class TestBinaryTCRDataset(Dataset):
                  tenth = 0, group='test'):
         self.root_dir = root_dir
         self.cache = str(cache)
+        self.group = group
         data_path = os.path.join(root_dir, data_file)
         self.nb_patient = int(nb_patient)
-        if group == 'test':
+        if self.group == 'test':
             self.data = np.load(data_path)[self.nb_patient:self.nb_patient+4]
-        elif group == 'same':
-            self.data = np.load(data_path)[:5]
-        elif group == 'thome':
+        elif self.group == 'same':
+            self.data = np.load(data_path)#[:100]
+        elif self.group == 'thome':
             self.data = np.load(data_path)
         self.nb_kmer = 10
         self.nb_tcr_to_sample = int(nb_tcr_to_sample)
@@ -329,16 +299,33 @@ class TestBinaryTCRDataset(Dataset):
         idx = self.data[idx]
         idx, idx_n = idx[0], idx[1]
 
+        print (f'Loading patient {idx}')
+        fnames = os.listdir('cached_dataset')
 
-        tcr = np.load(f'{self.root_dir}/{idx}_tcr_{self.prefix}.npy')
-        step = int(tcr.shape[0]/10)
-        start = step*self.tenth
-        tcr = tcr[start:start+self.nb_tcr_to_sample]
+        if not f'{self.cache}_{self.group}_{self.tenth}_{idx}_tcr_{self.prefix}.npy' in fnames:
+            print ('File not cached! Loading...')
+            tcr = np.load(f'{self.root_dir}/{idx}_tcr_{self.prefix}.npy')
+            step = int(tcr.shape[0]/10)
+            for i in range(10):
+                print('Doing partition {i}')
+                start = step*i
+                tcr = tcr[start:start+self.nb_tcr_to_sample]
+                np.save(f'{self.cache}_{self.group}_{i}_{idx}_tcr_{self.prefix}.npy', tcr)
+        tcr = np.load(f'{self.cache}_{self.group}_{self.tenth}_{idx}_tcr_{self.prefix}.npy')
 
-        tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_{self.prefix}.npy')
-        step = int(tcr_n.shape[0]/10)
-        start = step*self.tenth
-        tcr_n = tcr_n[start:start+self.nb_tcr_to_sample]
+
+
+        if not f'{self.cache}_{self.group}_{self.tenth}_{idx_n}_tcr_{self.prefix}.npy' in fnames:
+            print ('File not cached! Loading...')
+            tcr_n = np.load(f'{self.root_dir}/{idx_n}_tcr_{self.prefix}.npy')
+            step = int(tcr_n.shape[0]/10)
+            for i in range(10):
+                print('Doing partition {i}')
+                start = step*i
+                tcr_n = tcr_n[start:start+self.nb_tcr_to_sample]
+                np.save(f'{self.cache}_{self.group}_{i}_{idx_n}_tcr_{self.prefix}.npy', tcr_n)
+        tcr_n = np.load(f'{self.cache}_{self.group}_{self.tenth}_{idx_n}_tcr_{self.prefix}.npy')
+
 
         h1 = np.load(f'{self.root_dir}/{idx}_h1.npy')
         #h1/=np.max(h1)

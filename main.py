@@ -143,7 +143,6 @@ def main(argv=None):
 
         for no_b, mini in enumerate(dataset):
 
-
             if opt.model == 'TCRonly':
 
                 y_pred, my_model, targets = training.TCRonly_batch(mini,opt,my_model)
@@ -217,7 +216,9 @@ def main(argv=None):
                 nb_pos = (np.sum(np.argmax(y_pred.cpu().detach().numpy(),axis=1))/y_pred.shape[0])
                 b_accuracy = (estimate_batch_accuracy(np.argmax(y_pred.cpu().detach().numpy(),axis=1),
                                                np.argmax(targets.cpu().detach().numpy(),axis=1)))
-                print (f'predicted proportion: {nb_pos} - accuracy: {b_accuracy}')
+
+                if no_b % 10 == 0:
+                    print (f'predicted proportion: {nb_pos} - accuracy: {b_accuracy}')
                 if b_accuracy>0.75:
                     good+=1
                 loss_save = loss.data.cpu().numpy().reshape(1,)[0]
@@ -227,7 +228,7 @@ def main(argv=None):
 
                 else:
                     loss_dict['train_losses_epoch'].append(loss_save)
-                    if no_b % 5 == 0:
+                    if no_b % 50 == 0:
                         print (f"Doing epoch {t},examples{no_b}/{len(dataset)}.Loss:{loss_save}")
                     optimizer.zero_grad()
                     loss.backward()
