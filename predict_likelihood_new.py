@@ -7,6 +7,7 @@ from torch.autograd import Variable
 import os
 import argparse
 import datasets
+import old_datasets
 import models
 import pickle
 import time
@@ -94,7 +95,8 @@ def main(argv=None):
 
     opt.dataset = 'binary_test'
     tenth=opt.tenth
-    dataset = datasets.get_dataset(opt,exp_dir,tenth=opt.tenth)
+    dataset = old_datasets.get_dataset(opt,exp_dir,test=True)
+    #dataset = datasets.get_dataset(opt,exp_dir,tenth=opt.tenth)
 
     # Creating a model
     print ("Getting the model...")
