@@ -112,6 +112,7 @@ def main(argv=None):
         elif opt.model == 'allseq' or opt.model == 'allseq_bin':
                 os.mkdir(f'{exp_dir}/tcr_embs/')
                 os.mkdir(f'{exp_dir}/hla_embs/')
+                os.mkdir(f'{exp_dir}/predictions')
 
 
     if not opt.cpu:
@@ -245,6 +246,11 @@ def main(argv=None):
                         optimizer.zero_grad()
                         loss.backward()
                         optimizer.step()
+                    preds_targets = np.hstack((y_pred.cpu().data.numpy(),
+                                               targets.cpu().data.numpy()))
+                    np.save(f'{exp_dir}/predictions/batch_{bn}_{no_b}.npy',preds_targets)
+                    monitoring.save_checkpoint(my_model, optimizer, t, opt, exp_dir)
+
 
                 batch_number = dataset.dataset.data[no_b]
                 kmerembs = my_model.get_embeddings(inputs_k, inputs_h1,
